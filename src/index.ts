@@ -100,6 +100,8 @@ class FCBot {
     updatesForMasterGameYear(newMGYRaw: FC.MasterGameYear[]) {
         const newMGY = _.keyBy(newMGYRaw, game => game.masterGameID);
 
+        console.log("Master Game List check");
+
         var updates: string[] = [];
         if (this.lastMasterGameYear) {
             updates = FCBot.diffMGY(this.lastMasterGameYear, newMGY);
@@ -300,7 +302,7 @@ class FCBot {
             }    
         });
         updates = newLA.slice(0, news).map( action =>
-            `${action.publisherName} - ${action.description}`
+            `**${action.publisherName}**: ${action.description}`
         );
         console.log("--- Action updates");
         console.log(updates);
