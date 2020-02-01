@@ -6,7 +6,8 @@
   "scripts": {
     "build": "node_modules/.bin/tsc",
     "start": "node dist/index.js",
-    "dev": "nodemon src/index.ts"
+    "dev": "nodemon src/index.ts",
+    "check-oc": "node check-oc.js"
   },
   "author": "",
   "license": "ISC",
