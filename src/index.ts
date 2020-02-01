@@ -43,9 +43,11 @@ class FCBot {
         console.log("Initialized FCBot!");
     }
 
-    reportOnJob(jobtype: string) {
+    reportNextJob(jobtype: string) {
         const job = this.jobs[jobtype];
-        console.log(`Next ${jobtype} check:`, job.nextInvocation().toString());
+        if (job) {
+            console.log(`Next ${jobtype} check:`, job.nextInvocation().toString());
+        }
     }
 
     start() {
@@ -103,7 +105,7 @@ class FCBot {
              updates =>
                 this.discordChannels.forEach(c => this.sendUpdatesToChannel(c, updates))
          );
-         this.reportOnJob(jobtype);
+         this.reportNextJob(jobtype);
          release();
     }
 
