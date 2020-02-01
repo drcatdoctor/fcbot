@@ -121,6 +121,7 @@ export class Client {
     }
 
     async get(path: string, queryStringParams: object = undefined) {
+        var self = this; // needed for functions because typescript is insane
         if (this.auth) {
             const getPromise = rp.get({
                 url: this.BASE_URL + path,
@@ -136,7 +137,7 @@ export class Client {
             return getPromise.then(function (response) {
                 if (response.statusCode == 403) {
                     console.log("get was 403");
-                    return this.refresh().then(x => this.get(path, queryStringParams));
+                    return self.refresh().then(x => self.get(path, queryStringParams));
                 }
                 else if (response.statusCode == 200) {
                     return response.body
@@ -147,7 +148,7 @@ export class Client {
             });
         }
         else {
-            return this.login().then(x => this.get(path, queryStringParams));
+            return self.login().then(x => self.get(path, queryStringParams));
         }
     }
 
