@@ -268,7 +268,16 @@ class FCBot {
                 else
                     return;
             case "criticScore":
-                return FCBot.addLhs(`**${newgame.gameName}** critic score is now **${d.rhs}**!`, d);
+                if (!d.rhs) {
+                    return FCBot.addLhs(`**${newgame.gameName}** critic score was removed??`, d)
+                }
+                else if (d.lhs && Math.abs(d.rhs - d.lhs) > 1.0) {
+                    // this could mean that maybe a critic score could slide many, many points very slowly
+                    // but this will have to do for now I guess
+                    return FCBot.addLhs(`**${newgame.gameName}** critic score is now **${d.rhs}**!`, d);
+                }
+                else
+                    return undefined;
             case "fantasyPoints":
                 const points = (<FC.PublisherGame>newgame).counterPick ? -(d.rhs) : d.rhs;
                 return `**${newgame.gameName}** is now worth **${points} points**!`;
