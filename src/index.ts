@@ -9,8 +9,8 @@ import * as deepdiff from 'deep-diff';
 import * as _ from "lodash";
 import schedule = require('node-schedule');
 import {Mutex} from 'async-mutex';
-
-var memjs = require('memjs');
+import { exists } from "fs";
+import * as memjs from "memjs";
 
 
 
@@ -34,21 +34,21 @@ class FCBot {
     updateCache = new NodeCache({ stdTTL: Number(process.env.DEDUPE_WINDOW_SECS) });
     jobMutex = new Mutex();
 
-    memcache;
+    memcache: memjs.Client;
 
-    memcacheLeagueYearKey() {
+    memcacheLeagueYearKey(): string {
         return ["LeagueYear", this.leagueID, this.leagueYear].join('/');
     }
-    memcacheLeagueActionsKey() {
+    memcacheLeagueActionsKey(): string {
         return ["LeagueActions", this.leagueID, this.leagueYear].join('/');
     }
-    memcacheMasterGameYearKey() {
+    memcacheMasterGameYearKey(): string {
         return ["MasterGameYear", this.leagueYear].join('/');
     }
 
     constructor() {
         // look for memcached last stuff
-        this.memcache = memjs.Client.create(process.env.MEMCACHEDCLOUD_SERVERS, {
+        this.memcache = memjs.Client.create(process.env.MEMCACHEDCLOUD_SERVERS, <unknown>{
             username: process.env.MEMCACHEDCLOUD_USERNAME,
             password: process.env.MEMCACHEDCLOUD_PASSWORD
           });
@@ -105,19 +105,29 @@ class FCBot {
         return (path.length == 0 && key != 'publishers');
     }
 
+    async getFromMemcacheAndParse(key) {
+        var something = await this.memcache.get(key);
+        if (something.value != null && something.value.toString() != null && something.value.toString() != "") {
+            console.log("Retrieving from memcache", key);
+            return JSON.parse(something.value.toString());
+        } else {
+            return null;
+        }
+    }
+
     async checkForMemcache() {
         if (!this.lastLeagueYear)
-            this.lastLeagueYear = await this.memcache.get(this.memcacheLeagueYearKey());
+            this.lastLeagueYear = await this.getFromMemcacheAndParse(this.memcacheLeagueYearKey());
         if (!this.lastLeagueActions)
-            this.lastLeagueActions = await this.memcache.get(this.memcacheLeagueActionsKey());
+            this.lastLeagueActions = await this.getFromMemcacheAndParse(this.memcacheLeagueActionsKey());
         if (!this.lastMasterGameYear) 
-            this.lastMasterGameYear = await this.memcache.get(this.memcacheMasterGameYearKey());
+            this.lastMasterGameYear = await this.getFromMemcacheAndParse(this.memcacheMasterGameYearKey());
     }
 
     async recordInMemcache() {
-        this.memcache.set(this.memcacheLeagueYearKey(), this.lastLeagueYear);
-        this.memcache.set(this.memcacheLeagueActionsKey(), this.lastLeagueActions);
-        this.memcache.set(this.memcacheMasterGameYearKey(), this.lastMasterGameYear);
+        this.memcache.set(this.memcacheLeagueYearKey(), JSON.stringify(this.lastLeagueYear), { expires: 86400 });
+        this.memcache.set(this.memcacheLeagueActionsKey(), JSON.stringify(this.lastLeagueActions), { expires: 86400 });
+        this.memcache.set(this.memcacheMasterGameYearKey(), JSON.stringify(this.lastMasterGameYear), { expires: 86400 });
     }
 
     async doCheck(doMasterCheck: boolean, jobtype: string) {
@@ -257,6 +267,11 @@ class FCBot {
     }
 
     sendUpdatesToChannel(channel: Discord.TextChannel, updates: string[]) {
+        if(updates.length > 40) {
+            console.log("Obviously something is wrong");
+            process.exit(1);
+        }
+
         // basic dedupe
         const uniqUpdates = _.uniq(updates);
 
