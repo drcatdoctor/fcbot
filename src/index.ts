@@ -51,6 +51,8 @@ class FCBot {
     start() {
         this.discord.login(process.env.BOT_TOKEN);
 
+        this.doCheck(true, "startup");
+
         // the site update seems to finish at */2:08, so let's do the big check every 1 min from :08 to :12.
         // but also adjust for UTC, so it's not 2 4 6 .. it's 7 9 11 ...
         this.jobs["big"] =
