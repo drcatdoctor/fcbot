@@ -240,24 +240,41 @@ class FCBot {
             return "NEW: " + s;
     }
 
-    static updateForReleaseDate(oldgame: FC.Game, newgame: FC.Game): string | undefined {
-        if (newgame.releaseDate && !oldgame.releaseDate) {
-            return `**${newgame.gameName}** has an official release date: **${newgame.releaseDate}**`;    
+    static DATE_REGEXP = new RegExp(/(\d\d\d\d-\d\d-\d\d)T\d\d:\d\d:\d\d/);
+    static cleandate(s: string) {
+        if (!s) return s;
+        const results = FCBot.DATE_REGEXP.exec(s);
+        if (results) {
+            const justTheDate = results[1];
+            return justTheDate;
+        } else {
+            return s;
         }
-        else if (!newgame.releaseDate && oldgame.releaseDate) {
+    }
+
+    static updateForReleaseDate(oldgame: FC.Game, newgame: FC.Game): string | undefined {
+        var oldOfficial = FCBot.cleandate(oldgame.releaseDate);
+        var newOfficial = FCBot.cleandate(newgame.releaseDate);
+        var oldEstimate = FCBot.cleandate(oldgame.estimatedReleaseDate);
+        var newEstimate = FCBot.cleandate(newgame.estimatedReleaseDate);
+
+        if (newOfficial && !oldOfficial) {
+            return `**${newgame.gameName}** has an official release date: **${newOfficial}**`;    
+        }
+        else if (!newOfficial && oldOfficial) {
             var extra = "";
-            if (newgame.estimatedReleaseDate != oldgame.estimatedReleaseDate) {
-                extra = ` The new estimate is ${newgame.estimatedReleaseDate} (was: ${oldgame.estimatedReleaseDate})`
+            if (newEstimate != oldEstimate) {
+                extra = ` The new estimate is ${newEstimate} (was: ${oldEstimate})`
             }
             return `**${newgame.gameName}** had its official release date **removed**.` + extra;    
         }
-        else if (newgame.releaseDate != oldgame.releaseDate) {
+        else if (newOfficial != oldOfficial) {
             // official change
-            return `**${newgame.gameName}** has a new official release date: **${newgame.releaseDate}** (was: ${oldgame.releaseDate})`;
+            return `**${newgame.gameName}** has a new official release date: **${newOfficial}** (was: ${oldOfficial})`;
         }
-        else if (newgame.estimatedReleaseDate != oldgame.estimatedReleaseDate) {
+        else if (newEstimate != oldEstimate) {
             // either no official date, or official date didn't change
-            return `**${newgame.gameName}** has a new estimated release: **${newgame.estimatedReleaseDate}** (was: ${oldgame.estimatedReleaseDate})`;
+            return `**${newgame.gameName}** has a new estimated release: **${newEstimate}** (was: ${oldEstimate})`;
         }
         else // nothing changed
             return undefined;
