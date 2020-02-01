@@ -7,6 +7,8 @@ const ordinal = require('ordinal')
 
 import * as deepdiff from 'deep-diff';
 import * as _ from "lodash";
+import schedule = require('node-schedule');
+import {Mutex} from 'async-mutex';
 
 class FCBot {
 
@@ -14,6 +16,7 @@ class FCBot {
     fc: FC.Client;
     masterListEveryNChecks: number;
     check_number: number;
+    jobs: _.Dictionary<schedule.Job> = {};
 
     discordChannels: Discord.TextChannel[] = [];
 
@@ -25,6 +28,7 @@ class FCBot {
     lastMasterGameYear: _.Dictionary<FC.MasterGameYear> = undefined;
 
     updateCache = new NodeCache({ stdTTL: Number(process.env.DEDUPE_WINDOW_SECS) });
+    jobMutex = new Mutex();
 
     constructor() {
         this.discord = new Discord.Client();
@@ -36,28 +40,52 @@ class FCBot {
         // attach events
         this.discord.on('message', this.handleMessage.bind(this));
         this.discord.on('ready', this.handleReady.bind(this));
-        console.log("Initialized FCBot");
-        console.log(this.fc);
+        console.log("Initialized FCBot!");
     }
 
-    run() {
+    reportOnJob(jobtype: string) {
+        const job = this.jobs[jobtype];
+        console.log(`Next ${jobtype} check:`, job.nextInvocation().toString());
+    }
+
+    start() {
         this.discord.login(process.env.BOT_TOKEN);
 
-        setImmediate(this.loop.bind(this));
-        setInterval(this.loop.bind(this), Number(process.env.CHECK_INTERVAL_SECONDS) * 1000);
+        // the site update seems to finish at */2:08, so let's do the big check every 1 min from :08 to :12.
+        // but also adjust for UTC, so it's not 2 4 6 .. it's 7 9 11 ...
+        this.jobs["big"] =
+            schedule.scheduleJob('8-12 1,3,5,7,9,11,13,15,17,19,21,23 * * *', this.doCheck.bind(this, true, "big"));
+
+        // let's do small checks every 3 minutes
+        this.jobs["small"] = 
+            schedule.scheduleJob('*/3 * * * *', this.doCheck.bind(this, false, "small"));
+
+        // Bids go through Monday evenings at 8PM Eastern
+        // heroku times are in UTC, which makes this Tuesday morning at 1am.
+        //                                       s    m    h D M W
+        this.jobs["bids"] = schedule.scheduleJob('0,30 0-59 1 * * 2', this.doCheck.bind(this, false, "bids"));
+
+        // Dropping goes through Sunday evenings at 8PM Eastern.
+        // blah blah Monday morning at 1am.
+        this.jobs["drops"] = schedule.scheduleJob('0,30 0-59 1 * * 1', this.doCheck.bind(this, false, "drops"));
+
+        _.forOwn(this.jobs, (job, jobname) => 
+            console.log("First", jobname, "job will run at", job.nextInvocation().toString())
+        );
     }
 
     static filterAnythingButPublishers(path: string[], key: string) {
         return (path.length == 0 && key != 'publishers');
     }
 
-
-    loop() {
-        const doMasterCheck = (this.check_number % this.masterListEveryNChecks == 0);
-        this.check_number++;
-        console.log(`Start check ${this.check_number}`)
-    
-        this.fc.getLeagueYear(this.leagueID, this.leagueYear)
+    async doCheck(doMasterCheck: boolean, jobtype: string) {
+        if (this.jobMutex.isLocked()) {
+            console.log("Skipping", jobtype, "check due to job in progress.");
+            return;
+        }
+        const release = await this.jobMutex.acquire();
+        console.log("Start", jobtype, "check");
+        await this.fc.getLeagueYear(this.leagueID, this.leagueYear)
           .then(
               newLeagueYear => this.updatesForLeagueYear(newLeagueYear)
           ).then( 
@@ -73,6 +101,8 @@ class FCBot {
              updates =>
                 this.discordChannels.forEach(c => this.sendUpdatesToChannel(c, updates))
          );
+         this.reportOnJob(jobtype);
+         release();
     }
 
     updatesForLeagueYear(newLeagueYear: FC.LeagueYear): string[] {
@@ -112,8 +142,8 @@ class FCBot {
         return updates;
     }
     
-    static diffMGY(lastMGY: _.Dictionary<FC.MasterGameYear>, newMGY: _.Dictionary<FC.MasterGameYear>): string[] {
-        const difflist = deepdiff.diff(lastMGY, newMGY);
+    static diffMGY(oldMGY: _.Dictionary<FC.MasterGameYear>, newMGY: _.Dictionary<FC.MasterGameYear>): string[] {
+        const difflist = deepdiff.diff(oldMGY, newMGY);
 
         if (!difflist) {
             return [];
@@ -125,8 +155,9 @@ class FCBot {
             if (d.path.length > 1) {
                 const gameMasterID = d.path[0];
                 const key = d.path.slice(1).join('.');
-                const gamedata = newMGY[gameMasterID];
-                const update = FCBot.updateForGame(gamedata, key, d);
+                const newgame = newMGY[gameMasterID];
+                const oldgame = oldMGY[gameMasterID];
+                const update = FCBot.updateForGame(oldgame, newgame, key, d);
                 if (update) updates.push(update); 
             }
             else if (d.kind == 'N') {
@@ -175,8 +206,11 @@ class FCBot {
     }
 
     sendUpdatesToChannel(channel: Discord.TextChannel, updates: string[]) {
+        // basic dedupe
+        const uniqUpdates = _.uniq(updates);
+
         // only keep updates that are NOT in the cache.
-        const filteredUpdates = _.filter(updates, upd => this.updateCache.get(upd) === undefined );
+        const filteredUpdates = _.filter(uniqUpdates, upd => this.updateCache.get(upd) === undefined );
     
         var first_send = true;
         var to_send = "";
@@ -202,42 +236,65 @@ class FCBot {
             return "NEW: " + s;
     }
 
-    static updateForGame(game: FC.Game, key: string, d: any): string | undefined {
+    static updateForReleaseDate(oldgame: FC.Game, newgame: FC.Game): string | undefined {
+        if (newgame.releaseDate && !oldgame.releaseDate) {
+            return `**${newgame.gameName}** has an official release date: **${newgame.releaseDate}**`;    
+        }
+        else if (!newgame.releaseDate && oldgame.releaseDate) {
+            var extra = "";
+            if (newgame.estimatedReleaseDate != oldgame.estimatedReleaseDate) {
+                extra = ` The new estimate is ${newgame.estimatedReleaseDate} (was: ${oldgame.estimatedReleaseDate})`
+            }
+            return `**${newgame.gameName}** had its official release date **removed**.` + extra;    
+        }
+        else if (newgame.releaseDate != oldgame.releaseDate) {
+            // official change
+            return `**${newgame.gameName}** has a new official release date: **${newgame.releaseDate}** (was: ${oldgame.releaseDate})`;
+        }
+        else if (newgame.estimatedReleaseDate != oldgame.estimatedReleaseDate) {
+            // either no official date, or official date didn't change
+            return `**${newgame.gameName}** has a new estimated release: **${newgame.estimatedReleaseDate}** (was: ${oldgame.estimatedReleaseDate})`;
+        }
+        else // nothing changed
+            return undefined;
+    }
+
+    static updateForGame(oldgame: FC.Game, newgame: FC.Game, key: string, d: any): string | undefined {
         switch (key) {
             case "released":   // publishers view
             case "isReleased": // master game list view
                 if (d.rhs) 
-                    return `**${game.gameName}** is out!`;
+                    return `**${newgame.gameName}** is out!`;
                 else
                     return;
             case "criticScore":
-                return FCBot.addLhs(`**${game.gameName}** critic score is now **${d.rhs}**!`, d);
+                return FCBot.addLhs(`**${newgame.gameName}** critic score is now **${d.rhs}**!`, d);
             case "fantasyPoints":
-                const points = (<FC.PublisherGame>game).counterPick ? -(d.rhs) : d.rhs;
-                return `**${game.gameName}** is now worth **${points} points**!`;
+                const points = (<FC.PublisherGame>newgame).counterPick ? -(d.rhs) : d.rhs;
+                return `**${newgame.gameName}** is now worth **${points} points**!`;
             case "willRelease":
                 if (d.rhs)
-                    return `**${game.gameName}** now officially **will release** in ${process.env.LEAGUE_YEAR}.`;
+                    return `**${newgame.gameName}** now officially **will release** in ${process.env.LEAGUE_YEAR}.`;
                 else
-                    return `**${game.gameName}** now officially **will not release** in ${process.env.LEAGUE_YEAR}.`;
+                    return `**${newgame.gameName}** now officially **will not release** in ${process.env.LEAGUE_YEAR}.`;
             case 'estimatedReleaseDate':
-                return FCBot.addLhs(`**${game.gameName}** estimated release date is now **${d.rhs}**`, d);
             case 'releaseDate':
-                return FCBot.addLhs(`**${game.gameName}** official release date is now **${d.rhs}**`, d);
+                return FCBot.updateForReleaseDate(oldgame, newgame);
             case 'eligibilitySettings.eligibilityLevel.name':
-                return FCBot.addLhs(`**${game.gameName}** is now categorized as **\"${d.rhs}\"**.`, d);
+                return FCBot.addLhs(`**${newgame.gameName}** is now categorized as **\"${d.rhs}\"**.`, d);
         }
         return undefined;
     }
     
-    static diffPublisherGames(pubdata: FC.Publisher, d: any): string[] {
+    static diffPublisherGames(oldpub: FC.Publisher, newpub: FC.Publisher, d: any): string[] {
         // d.path = publishers, N, games, ...?
         let updates: string[] = [];
     
         if (d.kind == 'E') {
             const gameindex = d.path[3]
-            const gamedata = pubdata.games[gameindex]
-            const update = FCBot.updateForGame(gamedata, d.path[4], d);
+            const oldgame = oldpub.games[gameindex]
+            const newgame = newpub.games[gameindex]
+            const update = FCBot.updateForGame(oldgame, newgame, d.path[4], d);
             if (update) updates.push(update);        
         }
         return updates;
@@ -269,14 +326,15 @@ class FCBot {
             console.log(d);
             if (d.path[0] == "publishers" && d.path.length > 2) {
                 const pubindex = d.path[1]
-                const pubdata = newData.publishers[pubindex]
+                const newpub = newData.publishers[pubindex]
+                const oldpub = oldData.publishers[pubindex]
                 if (d.path[2] == 'games') {
-                    updates = _.union(updates, FCBot.diffPublisherGames(pubdata, d));
+                    updates = _.union(updates, FCBot.diffPublisherGames(oldpub, newpub, d));
                 }
                 else if (d.path[2] == 'totalFantasyPoints') {
-                    const rankStr = rankStrings[pubdata.publisherName];
+                    const rankStr = rankStrings[newpub.publisherName];
                     updates.push(
-                        `**${pubdata.publisherName}** (Player: ${pubdata.playerName}) has a new score: ` +
+                        `**${newpub.publisherName}** (Player: ${newpub.playerName}) has a new score: ` +
                         `**${d.rhs}**! (was: ${d.lhs}). They are currently **${rankStr}**.`
                     )
                 }
@@ -310,4 +368,4 @@ class FCBot {
     }
 }
 
-new FCBot().run();
+new FCBot().start();
