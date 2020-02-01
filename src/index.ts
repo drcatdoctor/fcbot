@@ -10,6 +10,10 @@ import * as _ from "lodash";
 import schedule = require('node-schedule');
 import {Mutex} from 'async-mutex';
 
+var memjs = require('memjs');
+
+
+
 class FCBot {
 
     discord: Discord.Client;
@@ -30,11 +34,30 @@ class FCBot {
     updateCache = new NodeCache({ stdTTL: Number(process.env.DEDUPE_WINDOW_SECS) });
     jobMutex = new Mutex();
 
+    memcache;
+
+    memcacheLeagueYearKey() {
+        return ["LeagueYear", this.leagueID, this.leagueYear].join('/');
+    }
+    memcacheLeagueActionsKey() {
+        return ["LeagueActions", this.leagueID, this.leagueYear].join('/');
+    }
+    memcacheMasterGameYearKey() {
+        return ["MasterGameYear", this.leagueYear].join('/');
+    }
+
     constructor() {
-        this.discord = new Discord.Client();
-        this.fc = new FC.Client(process.env.FC_EMAIL_ADDRESS, process.env.FC_PASSWORD);
+        // look for memcached last stuff
+        this.memcache = memjs.Client.create(process.env.MEMCACHEDCLOUD_SERVERS, {
+            username: process.env.MEMCACHEDCLOUD_USERNAME,
+            password: process.env.MEMCACHEDCLOUD_PASSWORD
+          });
+
         this.leagueID = process.env.LEAGUE_ID;
         this.leagueYear = Number(process.env.LEAGUE_YEAR);
+
+        this.discord = new Discord.Client();
+        this.fc = new FC.Client(process.env.FC_EMAIL_ADDRESS, process.env.FC_PASSWORD);
         this.check_number = 0;
 
         // attach events
@@ -82,6 +105,21 @@ class FCBot {
         return (path.length == 0 && key != 'publishers');
     }
 
+    async checkForMemcache() {
+        if (!this.lastLeagueYear)
+            this.lastLeagueYear = await this.memcache.get(this.memcacheLeagueYearKey());
+        if (!this.lastLeagueActions)
+            this.lastLeagueActions = await this.memcache.get(this.memcacheLeagueActionsKey());
+        if (!this.lastMasterGameYear) 
+            this.lastMasterGameYear = await this.memcache.get(this.memcacheMasterGameYearKey());
+    }
+
+    async recordInMemcache() {
+        this.memcache.set(this.memcacheLeagueYearKey(), this.lastLeagueYear);
+        this.memcache.set(this.memcacheLeagueActionsKey(), this.lastLeagueActions);
+        this.memcache.set(this.memcacheMasterGameYearKey(), this.lastMasterGameYear);
+    }
+
     async doCheck(doMasterCheck: boolean, jobtype: string) {
         if (this.jobMutex.isLocked()) {
             console.log("Skipping", jobtype, "check due to job in progress.");
@@ -90,6 +128,7 @@ class FCBot {
 	const release = await this.jobMutex.acquire();
 	try {
         console.log("Start", jobtype, "check");
+        await this.checkForMemcache();
         await this.fc.getLeagueYear(this.leagueID, this.leagueYear)
           .then(
               newLeagueYear => this.updatesForLeagueYear(newLeagueYear)
@@ -106,7 +145,8 @@ class FCBot {
              updates =>
                 this.discordChannels.forEach(c => this.sendUpdatesToChannel(c, updates))
          );
-	    this.reportNextJob(jobtype);
+         this.recordInMemcache();
+ 	     this.reportNextJob(jobtype);
      }
      catch (err) {
         console.log("ERROR: ", err);

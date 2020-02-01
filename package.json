@@ -22,6 +22,7 @@
     "discord.js": "^11.5.1",
     "dotenv": "^8.2.0",
     "lodash": "^4.17.15",
+    "memjs": "^1.2.2",
     "node-cache": "^5.1.0",
     "node-schedule": "^1.3.2",
     "ordinal": "^1.0.3",
