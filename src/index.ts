@@ -87,7 +87,8 @@ class FCBot {
             console.log("Skipping", jobtype, "check due to job in progress.");
             return;
         }
-        const release = await this.jobMutex.acquire();
+	const release = await this.jobMutex.acquire();
+	try {
         console.log("Start", jobtype, "check");
         await this.fc.getLeagueYear(this.leagueID, this.leagueYear)
           .then(
@@ -105,8 +106,14 @@ class FCBot {
              updates =>
                 this.discordChannels.forEach(c => this.sendUpdatesToChannel(c, updates))
          );
-         this.reportNextJob(jobtype);
-         release();
+	    this.reportNextJob(jobtype);
+     }
+     catch (err) {
+        console.log("ERROR: ", err);
+     }
+	 finally {
+    	 release();
+	 }
     }
 
     updatesForLeagueYear(newLeagueYear: FC.LeagueYear): string[] {
