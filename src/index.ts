@@ -12,7 +12,20 @@ import {Mutex} from 'async-mutex';
 import { exists } from "fs";
 import * as memjs from "memjs";
 
-
+// things we don't care about.
+const FILTER_OUT_KEYS = [
+    'hypeFactor',
+    'dateAdjustedHypeFactor',
+    'projectedFantasyPoints',
+    'projectedOrRealFantasyPoints',
+    'advancedProjectedFantasyPoints',
+    'percentStandardGame',
+    'eligiblePercentStandardGame',
+    'percentCounterPick',
+    'eligiblePercentCounterPick',
+    'averageDraftPosition',
+    'totalProjectedPoints',
+];
 
 class FCBot {
 
@@ -101,8 +114,12 @@ class FCBot {
         );
     }
 
-    static filterAnythingButPublishers(path: string[], key: string) {
+    static filterAnythingButPublishers(path: string[], key: string): boolean {
         return (path.length == 0 && key != 'publishers');
+    }
+
+    static filterOutUninterestingKeys(path: string[], key: string): boolean {
+        return FILTER_OUT_KEYS.includes(key);
     }
 
     async getFromMemcacheAndParse(key) {
@@ -204,7 +221,7 @@ class FCBot {
     }
     
     static diffMGY(oldMGY: _.Dictionary<FC.MasterGameYear>, newMGY: _.Dictionary<FC.MasterGameYear>): string[] {
-        const difflist = deepdiff.diff(oldMGY, newMGY);
+        const difflist = deepdiff.diff(oldMGY, newMGY, FCBot.filterOutUninterestingKeys);
 
         if (!difflist) {
             return [];
@@ -393,7 +410,8 @@ class FCBot {
     }
 
     static diffLeagueYear(oldData: FC.LeagueYear, newData: FC.LeagueYear): string[] {
-        const difflist = deepdiff.diff(oldData, newData, FCBot.filterAnythingButPublishers);
+        const difflist = deepdiff.diff(oldData, newData, 
+            FCBot.filterAnythingButPublishers || FCBot.filterOutUninterestingKeys);
 
         if (!difflist) {
             return [];
