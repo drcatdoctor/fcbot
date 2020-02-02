@@ -36,6 +36,7 @@
     "typescript": "^3.7.5"
   },
   "devDependencies": {
+    "@types/request-promise": "^4.1.45",
     "nodemon": "^2.0.2",
     "sqlite3": "^4.1.1"
   }

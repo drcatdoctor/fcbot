@@ -1,4 +1,6 @@
-const rp = require('request-promise');
+import _ = require("lodash");
+import rp = require('request-promise');
+import { request } from "http";
 
 export interface EligibilityLevel {
     name: string
@@ -65,6 +67,15 @@ export interface LeagueAction {
     managerAction: boolean
 }
 
+const request_options = {
+    headers: {
+        'User-Agent': 'fantasy-critic-bot/' + process.env.HEROKU_RELEASE_VERSION
+    },
+    json: true,
+    gzip: true, // allow incoming compressed responses
+    forever: true // use TCP & HTTP keepalive.
+}
+
 export class Client {
     private readonly BASE_URL = "https://www.fantasycritic.games/api";
 
@@ -93,12 +104,11 @@ export class Client {
             emailAddress: this.emailAddress,
             password: this.password
         }
-        const jsonbody = await rp.post({
+        const jsonbody = await rp.post(_.defaults({
             url: this.BASE_URL + this.PATH_POST_LOGIN,
-            json: true,
             body: params,
             simple: true
-        });
+        }, request_options));
         this.auth = jsonbody;
     }
 
@@ -111,28 +121,26 @@ export class Client {
             token: this.auth.token,
             refreshToken: this.auth.refreshToken
         }
-        const jsonbody = await rp.post({
+        const jsonbody = await rp.post(_.defaults({
             url: this.BASE_URL + this.PATH_POST_REFRESH,
-            json: true,
             body: params,
             simple: true
-        });
+        }, request_options));
         this.auth = jsonbody;
     }
 
     async get(path: string, queryStringParams: object = undefined) {
         var self = this; // needed for functions because typescript is insane
         if (this.auth) {
-            const getPromise = rp.get({
+            const getPromise = rp.get(_.defaults({
                 url: this.BASE_URL + path,
                 qs: queryStringParams,
-                json: true,
                 simple: false,
                 resolveWithFullResponse: true,
                 auth: {
                     bearer: this.auth.token
                 }
-            });
+            }, request_options));
     
             return getPromise.then(function (response) {
                 if (response.statusCode == 403) {
