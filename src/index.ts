@@ -410,8 +410,9 @@ class FCBot {
     }
 
     static diffLeagueYear(oldData: FC.LeagueYear, newData: FC.LeagueYear): string[] {
-        const difflist = deepdiff.diff(oldData, newData, 
-            FCBot.filterAnythingButPublishers || FCBot.filterOutUninterestingKeys);
+        const difflist = deepdiff.diff(oldData, newData, (p,k) =>
+            FCBot.filterAnythingButPublishers(p,k) || FCBot.filterOutUninterestingKeys(p,k)
+        );
 
         if (!difflist) {
             return [];
