@@ -1,5 +1,5 @@
 import * as memjs from "memjs";
-import * as FC from "./fc";
+import * as FC from "../fc/main";
 
 export class FCMemcache {
 
@@ -10,6 +10,7 @@ export class FCMemcache {
             username: process.env.MEMCACHEDCLOUD_USERNAME,
             password: process.env.MEMCACHEDCLOUD_PASSWORD
           });
+        console.log("Memcache using servers:", memjsClient.servers.map((s: any) => `${s.host}:${s.port}`).join(", "));
         this.memClient = memjsClient;
     }
 

@@ -1,13 +1,10 @@
+import * as _ from "lodash";
 import * as Discord from 'discord.js';
-import { FCMemcache } from './fcmemcache'
-import { GuildWorker } from './worker'
+import { FCMemcache } from './FCMemcache'
+import { GuildWorker } from './GuildWorker'
+import { FCMongo } from './FCMongo';
 
 require('dotenv').config()
-
-import * as _ from "lodash";
-import * as memjs from "memjs";
-import { MongoClient } from "mongodb";
-import { FCMongo } from './fcmongo';
 
 export class FCBot {
 
@@ -36,11 +33,12 @@ export class FCBot {
     }
 
     reportChannels(toChannel: Discord.TextChannel, worker: GuildWorker) {
-        if (worker.channels.length == 0) {
-            toChannel.send("No update channel is set.");
+        const channelNamesList = worker.getChannelNamesList();
+        if (channelNamesList.length == 0) {
+            this.send(toChannel, "No update channel is set.");
         }
         else {
-            toChannel.send(`Updates will be sent to ${worker.channels.map(c => "#" + c.name).join(', ')}`)
+            this.send(toChannel, `Updates will be sent to ${channelNamesList.join(', ')}`)
         }
     }
 
@@ -57,49 +55,67 @@ export class FCBot {
 
         const isAdmin = (message.member.hasPermission('ADMINISTRATOR') || message.author.id == MY_USER_ID);
 
-        if(message.content.indexOf('!') !== 0) return;
-
         const args = message.content.split(/\s+/g);
+        if (!args)
+            return; // empty message?
         const command = args.shift().toLowerCase();
+        
+        if(!command.startsWith("!fc")) return;
+
         const worker = this.getGuildWorker(guild);
 
         if (!worker) {
-            console.log("Received possible command but no worker for guild");
+            console.log("Received possible command but no worker for guild", guild.name, guild.id);
             return;
         }
+
+        FCBot.logRecv(message);
 
         if (isAdmin)
             this.doAdminCommand(channel, command, args, worker);
         this.doEveryoneCommand(channel, command, args, worker);
     }
 
+    static logSend(channel:Discord.TextChannel, s: string) {
+        console.log(`"${channel.guild.name}"/#${channel.name}@FCBot:`, s);
+    }
+
+    static logRecv(message: Discord.Message) {
+        console.log(`"${message.guild.name}"/#${(<Discord.TextChannel>message.channel).name}@${message.author.tag}:`, message.content);
+    }
+
+    send(channel: Discord.TextChannel, s: string) {
+        FCBot.logSend(channel, s);
+        channel.send(s);
+    }
+
     async doAdminCommand(channel: Discord.TextChannel, command: string, args: string[], worker: GuildWorker) {
         switch (command) {
         case "!fcstop":
             worker.stopSchedule();
-            channel.send("Stopping updates.");
+            this.send(channel, "Stopping updates.");
             break;
         case "!fcstatus":
             if (worker.running) {
-                channel.send("Updates are running for this server.")
+                this.send(channel, "Updates are running for this server.")
             } else {
-                channel.send("Updates are not running for this server.")
+                this.send(channel, "Updates are not running for this server.")
             }
             this.reportChannels(channel, worker);
             break;
         case "!fcstart":
             try {
                 await worker.startSchedule();
-                channel.send("Updates active.")
+                this.send(channel, "Updates active.")
                 this.reportChannels(channel, worker);
             }
             catch (err) {
-                channel.send("Error starting updates: " + err.message);
+                this.send(channel, "Error starting updates: " + err.message);
             }
             break;
         case "!fcadd":
             if (args.length != 1) {
-                channel.send("Use !fcadd <channel name>");
+                this.send(channel, "Use !fcadd <channel name>");
             }
             var channelName = args[0];
             if (channelName[0] == "#") {
@@ -109,17 +125,15 @@ export class FCBot {
                 c => c.name == channelName && c.type == "text"
             );
             if (!foundChannel) {
-                channel.send(`I couldn't find a channel matching "${channelName}".`);
-            } else if (worker.channels.indexOf(foundChannel) != -1) {
-                channel.send(`I'm already sending updates to "${channelName}"`)
+                this.send(channel, `I couldn't find a channel matching "${channelName}".`);
             } else {
-                worker.channels.push(foundChannel);
+                worker.addChannel(foundChannel);
             }
             this.reportChannels(channel, worker);
             break;
         case "!fcremove":
             if (args.length != 1) {
-                channel.send("Use !fcremove <channel name>");
+                this.send(channel, "Use !fcremove <channel name>");
             }
             var channelName = args[0];
             if (channelName[0] == "#") {
@@ -127,21 +141,19 @@ export class FCBot {
             }
             var foundChannel = <Discord.TextChannel>channel.guild.channels.find(c => c.name == channelName && c.type == "text");
             if (!foundChannel) {
-                channel.send(`I couldn't find a channel matching "${channelName}".`);
-            } else if (worker.channels.indexOf(foundChannel) == -1) {
-                channel.send(`I'm not sending updates to "${channelName}"`)
+                this.send(channel, `I couldn't find a channel matching "${channelName}".`);
             } else {
-                _.remove(worker.channels, c => c === foundChannel);
+                worker.removeChannel(foundChannel);
             }
             this.reportChannels(channel, worker);
             break;
         case "!fclogin":
             await worker.doFCLogin(args[0], args[1]);
             worker.setLeague(args[2], Number(args[3]));
-            channel.send("OK");
+            this.send(channel, "OK");
             break;
         case "!fcadminhelp":
-            channel.send("Commands: !fcstop, !fcstatus, !fcstart, !fcadd, !fcremove");
+            this.send(channel, "Commands: !fcstop, !fcstatus, !fcstart, !fcadd, !fcremove");
             break;
         }
     }
@@ -153,11 +165,11 @@ export class FCBot {
                 await worker.doScoreReport(channel);
             }
             catch (err) {
-                channel.send("Error starting updates: " + err.message);
+                this.send(channel, "Error starting updates: " + err.message);
             }
             break;
         case "!fchelp":
-            channel.send("Commands: . Also see !fcadminhelp");
+            this.send(channel, "Commands: . Also see !fcadminhelp");
             break;
         }
     }
@@ -188,8 +200,5 @@ export class FCBot {
         const worker = new GuildWorker(guild, this.memcache, this.mongo);
         console.log(`New worker created for "${guild.name}" (${guild.id})`)
         this.workers[guild.id] = worker;
-        worker.loadState();
     }
 }
-
-new FCBot();

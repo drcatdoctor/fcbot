@@ -1,6 +1,9 @@
 import * as deepdiff from 'deep-diff';
-import * as FC from "./fc";
+import * as FC from "../fc/main";
 import * as _ from "lodash";
+var ranked = require('ranked');
+
+import { round_to_precision } from './round_to_precision';
 
 const ordinal = require('ordinal');
 
@@ -47,8 +50,21 @@ export function diffMGY(oldMGY: _.Dictionary<FC.MasterGameYear>, newMGY: _.Dicti
         }
         else if (d.kind == 'N') {
             const gameMasterID = d.path[0];
-            const gamedata = newMGY[gameMasterID];
-            updates.push(`New game added! **${gamedata.gameName}**, est. release ${gamedata.estimatedReleaseDate}.`);
+            const game = newMGY[gameMasterID];
+            var gameInfos = [`New game added! **${game.gameName}**`];
+            if (game.criticScore) {
+                gameInfos.push(`critic score ${round_to_precision(game.criticScore, 0.01)}`)
+            }
+            else if (game.projectedFantasyPoints) {
+                gameInfos.push(`projected points ${round_to_precision(game.projectedFantasyPoints, 0.01)}`)
+            }
+            if (game.releaseDate) {
+                gameInfos.push(`releasing ${game.releaseDate}`)
+            }
+            else if (game.estimatedReleaseDate) {
+                gameInfos.push(`est. release ${game.estimatedReleaseDate}`)
+            }
+            updates.push(gameInfos.join(', ') + ".");
         }
     });
     console.log("--- Master list updates");
@@ -119,6 +135,9 @@ function updateForGame(oldgame: FC.Game, newgame: FC.Game, key: string, d: any):
             if (!d.rhs) {
                 return addLhs(`**${newgame.gameName}** critic score was removed??`, d);
             }
+            else if (!d.lhs) {
+                return `**${newgame.gameName}** now has a score: **${d.rhs}**`;
+            }
             else if (d.lhs && Math.abs(d.rhs - d.lhs) > 1.0) {
                 // this could mean that maybe a critic score could slide many, many points very slowly
                 // but this will have to do for now I guess
@@ -165,18 +184,11 @@ export function diffLeagueYear(oldData: FC.LeagueYear, newData: FC.LeagueYear): 
         return [];
     }
     let updates: string[] = [];
-    // build ranking
-    let rankStrings: {
-        [index: string]: string;
-    } = {};
-    _.chain(newData.publishers).groupBy(pub => pub.totalFantasyPoints).toPairs().orderBy(0, "desc").value().forEach(function (pair, index) {
-        const pubGroup = pair[1];
-        const isTied = pair[1].length > 1;
-        pubGroup.forEach(function (pub) {
-            const rankStr = (isTied ? "tied for " : "") + ordinal(index + 1);
-            rankStrings[pub.publisherName] = rankStr;
-        });
-    });
+    
+    // it's so rank
+    const rankedPubs: {rank: number, item: FC.Publisher}[] = 
+        ranked.ranking(newData.publishers, (pub: FC.Publisher) => pub.totalFantasyPoints);
+
     difflist.forEach(function (d: any) {
         console.log(d);
         if (d.path[0] == "publishers" && d.path.length > 2) {
@@ -187,7 +199,11 @@ export function diffLeagueYear(oldData: FC.LeagueYear, newData: FC.LeagueYear): 
                 updates = _.union(updates, diffPublisherGames(oldpub, newpub, d));
             }
             else if (d.path[2] == 'totalFantasyPoints') {
-                const rankStr = rankStrings[newpub.publisherName];
+                const ranking = rankedPubs.find(value => value.item === newpub);
+                const isTie = (_.filter(rankedPubs, rp => rp.rank == ranking.rank).length > 1)
+
+                const rankStr = (isTie ? "tied for " : "") + ordinal(ranking.rank);
+
                 updates.push(`**${newpub.publisherName}** (Player: ${newpub.playerName}) has a new score: ` +
                     `**${d.rhs}**! (was: ${d.lhs}). They are currently **${rankStr}**.`);
             }

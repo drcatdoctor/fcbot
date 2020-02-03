@@ -2,14 +2,17 @@ import * as NodeCache from "node-cache";
 
 import schedule = require('node-schedule');
 import {Mutex} from 'async-mutex';
-import * as FCDiff from "./fcdiff";
-import * as FC from "./fc";
+import * as FCDiff from "./fcdifftools";
+import * as FC from "../fc/main";
+import * as Client from "../fc/Client";
 
 import * as Discord from 'discord.js';
 import * as _ from "lodash";
 
-import { FCMemcache } from './fcmemcache'
-import { FCMongo } from './fcmongo'
+import { FCMemcache } from './FCMemcache'
+import { FCMongo } from './FCMongo'
+import { FCBot } from "./main";
+import { round_to_precision } from "./round_to_precision";
 
 export interface WorkerSaveState {
     guildId: string,
@@ -27,7 +30,7 @@ export class GuildWorker {
     private mongo: FCMongo;
     running: boolean = false;
 
-    channels: Discord.TextChannel[] = [];
+    private channels: Discord.TextChannel[] = [];
     private league: FC.League;
 
     private jobs: _.Dictionary<schedule.Job> = {};
@@ -41,17 +44,39 @@ export class GuildWorker {
         this.guild = guild;
         this.memcache = memcache;
         this.mongo = mongo;
-        this.fc = new FC.Client();
+        this.fc = new Client.Client();
+        console.log("constructing GuildWorker doing loadState");
         this.loadState();
         this.fc.on('authRefresh', this.handleFCAuthRefresh.bind(this));
     }
 
     handleFCAuthRefresh(auth: any) {
+        console.log("handleFCAuthRefresh saveState");
         this.saveState();
     }
 
-    async loadState() {
-        var state: WorkerSaveState = await this.mongo.get({guildId: this.guild.id});
+    getChannelNamesList(): string[] {
+        if (this.channels.length == 0) {
+            return [];
+        }
+        else {
+            return this.channels.map(c => "#" + c.name);
+        }
+    }
+
+    addChannel(channelToAdd: Discord.TextChannel) { 
+        this.channels = _.union(this.channels, [channelToAdd]);
+        this.saveState();
+    }
+
+    removeChannel(channelToRemove: Discord.TextChannel) {
+        _.remove(this.channels, c => c == channelToRemove)
+        this.saveState();
+    }
+
+    private async loadState() {
+        var state: WorkerSaveState = await this.mongo.get(this.guild.id);
+        console.log("loadState");
         if (state) {
             console.log("Found state");
             console.log(state);
@@ -71,7 +96,7 @@ export class GuildWorker {
         }
     }
 
-    async saveState() {
+    private async saveState() {
         var state: WorkerSaveState = {
             guildId: this.guild.id,
             fcAuth: this.fc.auth,
@@ -79,6 +104,8 @@ export class GuildWorker {
             channelNames: this.channels.map(c => c.name),
             running: this.running
         };
+        console.log("saveState");
+        console.log(state);
         return this.mongo.set(state);
     }
 
@@ -89,6 +116,7 @@ export class GuildWorker {
 
     setLeague(leagueId: string, leagueYear: number) {
         this.league = { id: leagueId, year: leagueYear };
+        console.log("setLeague saveState");
         this.saveState();
     }
 
@@ -103,7 +131,9 @@ export class GuildWorker {
             `**${pl.publisher.publisherName}** (${pl.publisher.playerName}): ` + 
             `**${pl.totalFantasyPoints} points** (${round_to_precision(pl.advancedProjectedFantasyPoints, 0.01)} projected)`
         )
-        channel.send('*Score Report*\n' + strings.join('\n'));
+        const to_send = '*Score Report*\n' + strings.join('\n');
+        FCBot.logSend(channel, to_send);
+        channel.send(to_send);
     }
 
     async startSchedule() {
@@ -137,6 +167,7 @@ export class GuildWorker {
 
         this.doCheck(true, "startup");
         this.running = true;
+        console.log("after start saveState");
         this.saveState();
     }
 
@@ -145,6 +176,7 @@ export class GuildWorker {
         this.jobs = {};
         console.log(`All jobs unscheduled for guild "${this.guild.name}" (${this.guild.id})`)
         this.running = false;
+        console.log("after stop saveState");
         this.saveState();
     }
 
@@ -302,15 +334,10 @@ export class GuildWorker {
             } else {
                 to_send = chunk.join(separator);
             }
-            console.log("Sending:\n" + to_send);
+            FCBot.logSend(channel, to_send);
             channel.send(to_send);
         });
     
         this.updateCache.mset(updates.map(function (upd) { return {key: upd, val: 1}; }));
     }
-}
-
-function round_to_precision(x, precision) {
-    var y = +x + (precision === undefined ? 0.5 : precision/2);
-    return y - (y % (precision === undefined ? 1 : +precision));
 }
