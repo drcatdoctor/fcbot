@@ -1,6 +1,12 @@
 import _ = require("lodash");
 import rp = require('request-promise');
 import { request } from "http";
+import { EventEmitter } from "events";
+
+export interface League {
+    id: string;
+    year: number;
+}
 
 export interface EligibilityLevel {
     name: string
@@ -55,8 +61,16 @@ export interface Publisher {
 }
 
 export interface LeagueYear {
-    publishers: Publisher[]
+    publishers: Publisher[],
+    players: Player[]
     // missing some
+}
+
+export interface Player {
+    publisher: Publisher,
+    totalFantasyPoints: number,
+    simpleProjetedFantasyPoints: number,
+    advancedProjectedFantasyPoints: number
 }
 
 export interface LeagueAction {
@@ -72,11 +86,10 @@ const request_options = {
         'User-Agent': 'fantasy-critic-bot/' + process.env.HEROKU_RELEASE_VERSION
     },
     json: true,
-    gzip: true, // allow incoming compressed responses
     forever: true // use TCP & HTTP keepalive.
 }
 
-export class Client {
+export class Client extends EventEmitter {
     private readonly BASE_URL = "https://www.fantasycritic.games/api";
 
     private readonly PATH_GET_LEAGUE_YEAR = '/League/GetLeagueYear';
@@ -85,31 +98,25 @@ export class Client {
     private readonly PATH_POST_LOGIN = '/account/login';
     private readonly PATH_POST_REFRESH = '/token/refresh';
     
-    private emailAddress: string;
-    private password: string;
-    private auth: {
+    auth: {
         token: string,
         refreshToken: string
         // plus some other stuff
     };
-    
-    constructor(emailAddress: string, password: string) {
-        this.emailAddress = emailAddress;
-        this.password = password;
-        this.auth = undefined;
-    }
 
-    async login() {
+    async login(emailAddress: string, password: string) {
         const params = {
-            emailAddress: this.emailAddress,
-            password: this.password
+            emailAddress: emailAddress,
+            password: password
         }
+        console.log("Logging in to FC");
         const jsonbody = await rp.post(_.defaults({
             url: this.BASE_URL + this.PATH_POST_LOGIN,
             body: params,
             simple: true
         }, request_options));
         this.auth = jsonbody;
+        this.emit('authRefresh', jsonbody);
     }
 
     
@@ -117,6 +124,7 @@ export class Client {
         if (!this.auth) {
             throw new Error("Can't refresh without initial login");
         }
+        console.log("Refreshing FC token");
         const params = {
             token: this.auth.token,
             refreshToken: this.auth.refreshToken
@@ -127,6 +135,7 @@ export class Client {
             simple: true
         }, request_options));
         this.auth = jsonbody;
+        this.emit('authRefresh', jsonbody);
     }
 
     async get(path: string, queryStringParams: object = undefined) {
@@ -156,21 +165,21 @@ export class Client {
             });
         }
         else {
-            return self.login().then(x => self.get(path, queryStringParams));
+            throw new Error("FC get() called without login() called first")
         }
     }
 
-    async getLeagueYear(leagueID: string, year: number): Promise<LeagueYear> {
+    async getLeagueYear(league: League): Promise<LeagueYear> {
         return this.get(this.PATH_GET_LEAGUE_YEAR, {
-            leagueID: leagueID,
-            year: year
+            leagueID: league.id,
+            year: league.year
         });
     }
 
-    async getLeagueActions(leagueID: string, year: number): Promise<LeagueAction[]> {
+    async getLeagueActions(league: League): Promise<LeagueAction[]> {
         return this.get(this.PATH_GET_LEAGUE_ACTIONS, {
-            leagueID: leagueID,
-            year: year
+            leagueID: league.id,
+            year: league.year
         });
     }
 
