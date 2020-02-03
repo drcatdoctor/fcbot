@@ -15,7 +15,8 @@ export interface WorkerSaveState {
     guildId: string,
     fcAuth: any,
     league: FC.League,
-    channelNames: string[]
+    channelNames: string[],
+    running: boolean
 }
 
 export class GuildWorker {
@@ -64,6 +65,9 @@ export class GuildWorker {
                     this.channels.push(found);
                 }
             }
+            if (state.running) {
+                this.startSchedule();
+            }
         }
     }
 
@@ -72,7 +76,8 @@ export class GuildWorker {
             guildId: this.guild.id,
             fcAuth: this.fc.auth,
             league: this.league,
-            channelNames: this.channels.map(c => c.name)
+            channelNames: this.channels.map(c => c.name),
+            running: this.running
         };
         return this.mongo.set(state);
     }
@@ -132,6 +137,7 @@ export class GuildWorker {
 
         this.doCheck(true, "startup");
         this.running = true;
+        this.saveState();
     }
 
     async stopSchedule() {
@@ -139,6 +145,7 @@ export class GuildWorker {
         this.jobs = {};
         console.log(`All jobs unscheduled for guild "${this.guild.name}" (${this.guild.id})`)
         this.running = false;
+        this.saveState();
     }
 
     private async checkForMemcache() {
@@ -232,7 +239,11 @@ export class GuildWorker {
             console.log("Skipping", jobtype, "check due to job in progress.");
             return;
         }
-        const release = await this.jobMutex.acquire();
+        if (!this.guild.available) {
+            console.log(`Guild "${this.guild.name}" is not available - skipping check until later.`);
+            return;
+        }
+       const release = await this.jobMutex.acquire();
         try {
             console.log("Start", jobtype, "check");
             await this.checkForMemcache();
@@ -272,10 +283,6 @@ export class GuildWorker {
     private sendUpdatesToChannel(channel: Discord.TextChannel, updates: string[]) {
         if(updates.length > 40) {
             console.log("Obviously something is wrong, not sending the", updates.length, "updates queued for channel");
-            return;
-        }
-        if (!channel.guild.available) {
-            console.log(`Guild "${channel.guild.name}" is not available, discarding updates.`);
             return;
         }
 
