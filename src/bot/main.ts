@@ -165,7 +165,15 @@ export class FCBot {
                 await worker.doScoreReport(channel);
             }
             catch (err) {
-                this.send(channel, "Error starting updates: " + err.message);
+                this.send(channel, "Error: " + err.message);
+            }
+            break;
+        case "!fccheck":
+            try {
+                await worker.checkOne(channel, args.join(" "));
+            }
+            catch (err) {
+                this.send(channel, "Error: " + err.message);
             }
             break;
         case "!fchelp":
