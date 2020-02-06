@@ -161,10 +161,10 @@ export class GuildWorker {
         }     
         var l3s: string[] = [];   
         if (game.percentStandardGame !== undefined) {
-            l3s.push( `Picked %${FCDiff.cleannum(game.percentStandardGame * 100.0)} of the time` );
+            l3s.push( `Picked ${FCDiff.cleannum(game.percentStandardGame * 100.0)}% of the time` );
         }
         if (game.percentCounterPick !== undefined) {
-            l3s.push( `Counterpicked %${FCDiff.cleannum(game.percentCounterPick * 100.0)} of the time` );
+            l3s.push( `Counterpicked ${FCDiff.cleannum(game.percentCounterPick * 100.0)}% of the time` );
         }
         var line = l1;
         if (l2s) {
