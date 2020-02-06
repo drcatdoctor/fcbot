@@ -181,8 +181,9 @@ export class GuildWorker {
         if (!MGYdict) {
             MGYdict = await this.getMGY();
         }
+        var search = gameSearch.toLowerCase();
 
-        var hits = _.values(MGYdict).filter( mgy => mgy.gameName.includes(gameSearch) );
+        var hits = _.values(MGYdict).filter( mgy => mgy.gameName.toLowerCase().includes(search) );
 
         var result: string;
         if (hits.length > 5) {
