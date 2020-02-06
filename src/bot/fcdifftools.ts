@@ -3,10 +3,9 @@ import * as FC from "../fc/main";
 import * as _ from "lodash";
 var ranked = require('ranked');
 
-import { round_to_precision } from './round_to_precision';
-
 const ordinal = require('ordinal');
 
+const NUMERICAL_DIFF_REPORT_THRESHOLD = 1.0;
 
 // things we don't care about.
 const FILTER_OUT_KEYS = [
@@ -31,6 +30,25 @@ function filterOutUninterestingKeys(path: string[], key: string): boolean {
     return FILTER_OUT_KEYS.includes(key);
 }
 
+const DATE_REGEXP = new RegExp(/(\d\d\d\d-\d\d-\d\d)T\d\d:\d\d:\d\d/);
+
+function cleandate(s: string) {
+    if (!s)
+        return s;
+    const results = DATE_REGEXP.exec(s);
+    if (results) {
+        const justTheDate = results[1];
+        return justTheDate;
+    }
+    else {
+        return s;
+    }
+}
+
+function cleannum(n: number): string {
+    return n.toPrecision(2);
+}
+
 export function diffMGY(oldMGY: _.Dictionary<FC.MasterGameYear>, newMGY: _.Dictionary<FC.MasterGameYear>): string[] {
     const difflist = deepdiff.diff(oldMGY, newMGY, filterOutUninterestingKeys);
     if (!difflist) {
@@ -53,16 +71,17 @@ export function diffMGY(oldMGY: _.Dictionary<FC.MasterGameYear>, newMGY: _.Dicti
             const game = newMGY[gameMasterID];
             var gameInfos = [`New game added! **${game.gameName}**`];
             if (game.criticScore) {
-                gameInfos.push(`critic score ${round_to_precision(game.criticScore, 0.01)}`)
+                gameInfos.push(`critic score ${cleannum(game.criticScore)}`)
             }
-            else if (game.projectedFantasyPoints) {
-                gameInfos.push(`projected points ${round_to_precision(game.projectedFantasyPoints, 0.01)}`)
-            }
+            // projected points seems to be broken on new entries.
+            //else if (game.projectedFantasyPoints) {
+            //    gameInfos.push(`projected points ${round_to_precision(game.projectedFantasyPoints, 0.01)}`)
+            //}
             if (game.releaseDate) {
-                gameInfos.push(`releasing ${game.releaseDate}`)
+                gameInfos.push(`official release ${cleandate(game.releaseDate)}`)
             }
             else if (game.estimatedReleaseDate) {
-                gameInfos.push(`est. release ${game.estimatedReleaseDate}`)
+                gameInfos.push(`est. release ${cleandate(game.estimatedReleaseDate)}`)
             }
             updates.push(gameInfos.join(', ') + ".");
         }
@@ -72,28 +91,18 @@ export function diffMGY(oldMGY: _.Dictionary<FC.MasterGameYear>, newMGY: _.Dicti
     return updates;
 }
 
-function addLhs(s: string, d: {
-    lhs: string | null | undefined;
-}): string {
-    if (d.lhs)
+function addLhs(s: string, d: { lhs: string | null | undefined; }): string {
+    if (d.lhs !== null && d.lhs !== undefined)
         return s + ` (was: ${d.lhs})`;
     else
         return "NEW: " + s;
 }
 
-const DATE_REGEXP = new RegExp(/(\d\d\d\d-\d\d-\d\d)T\d\d:\d\d:\d\d/);
-
-function cleandate(s: string) {
-    if (!s)
-        return s;
-    const results = DATE_REGEXP.exec(s);
-    if (results) {
-        const justTheDate = results[1];
-        return justTheDate;
-    }
-    else {
-        return s;
-    }
+function addLhsNum(s: string, d: { lhs: number | null | undefined; }): string {
+    if (d.lhs !== null && d.lhs !== undefined)
+        return s + ` (was: ${cleannum(d.lhs)})`;
+    else
+        return "NEW: " + s;
 }
 
 function updateForReleaseDate(oldgame: FC.Game, newgame: FC.Game): string | undefined {
@@ -133,26 +142,32 @@ function updateForGame(oldgame: FC.Game, newgame: FC.Game, key: string, d: any):
                 return;
         case "criticScore":
             if (!d.rhs) {
-                return addLhs(`**${newgame.gameName}** critic score was removed??`, d);
+                return addLhsNum(`**${newgame.gameName}** critic score was removed??`, d);
             }
             else if (!d.lhs) {
-                return `**${newgame.gameName}** now has a score: **${d.rhs}**`;
+                return `**${newgame.gameName}** now has a score: **${cleannum(d.rhs)}**`;
             }
-            else if (d.lhs && Math.abs(d.rhs - d.lhs) > 1.0) {
+            else if (d.lhs && Math.abs(d.rhs - d.lhs) >= NUMERICAL_DIFF_REPORT_THRESHOLD) {
                 // this could mean that maybe a critic score could slide many, many points very slowly
                 // but this will have to do for now I guess
-                return addLhs(`**${newgame.gameName}** critic score is now **${d.rhs}**!`, d);
+                return addLhsNum(`**${newgame.gameName}** critic score is now **${cleannum(d.rhs)}**!`, d);
             }
             else
                 return undefined;
         case "fantasyPoints":
-            const points = (<FC.PublisherGame>newgame).counterPick ? -(d.rhs) : d.rhs;
-            return `**${newgame.gameName}** is now worth **${points} points**!`;
+            if (!d.rhs) {
+                return addLhsNum(`**${newgame.gameName}** fantasy points removed??`, d);
+            }
+            else if (!d.lhs || (d.lhs && Math.abs(d.rhs - d.lhs) >= NUMERICAL_DIFF_REPORT_THRESHOLD)) {
+                const points = (<FC.PublisherGame>newgame).counterPick ? -(d.rhs) : d.rhs;
+                // don't report the 'was' for this, because it's covered by criticScore .. I guess..
+                return `**${newgame.gameName}** is now worth **${cleannum(points)} points**!`;
+            }
         case "willRelease":
             if (d.rhs)
-                return `**${newgame.gameName}** now officially **will release** in ${process.env.LEAGUE_YEAR}.`;
+                return `**${newgame.gameName}** now officially **will release** during this league year.`;
             else
-                return `**${newgame.gameName}** now officially **will not release** in ${process.env.LEAGUE_YEAR}.`;
+                return `**${newgame.gameName}** now officially **will not release** during this league year.`;
         case 'estimatedReleaseDate':
         case 'releaseDate':
             return updateForReleaseDate(oldgame, newgame);
@@ -203,9 +218,12 @@ export function diffLeagueYear(oldData: FC.LeagueYear, newData: FC.LeagueYear): 
                 const isTie = (_.filter(rankedPubs, rp => rp.rank == ranking.rank).length > 1)
 
                 const rankStr = (isTie ? "tied for " : "") + ordinal(ranking.rank);
+                // totalFantasyPoints can't be cleaned normally due to the need for ranking
+                const newScore = cleannum(d.rhs);
+                const oldScore = cleannum(d.lhs);
 
                 updates.push(`**${newpub.publisherName}** (Player: ${newpub.playerName}) has a new score: ` +
-                    `**${d.rhs}**! (was: ${d.lhs}). They are currently **${rankStr}**.`);
+                    `**${newScore}**! (was: ${oldScore}). They are currently **${rankStr}**.`);
             }
         }
     });

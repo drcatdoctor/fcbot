@@ -5,6 +5,7 @@ import {Mutex} from 'async-mutex';
 import * as FCDiff from "./fcdifftools";
 import * as FC from "../fc/main";
 import * as Client from "../fc/Client";
+var ranked = require('ranked');
 
 import * as Discord from 'discord.js';
 import * as _ from "lodash";
@@ -12,7 +13,6 @@ import * as _ from "lodash";
 import { FCMemcache } from './FCMemcache'
 import { FCMongo } from './FCMongo'
 import { FCBot } from "./main";
-import { round_to_precision } from "./round_to_precision";
 
 export interface WorkerSaveState {
     guildId: string,
@@ -127,10 +127,17 @@ export class GuildWorker {
         if (!this.fc.auth) {
             throw new Error("can't do score without FC client logged in");
         }
-        var strings = (await this.getLeagueYear()).players.map(pl =>
-            `**${pl.publisher.publisherName}** (${pl.publisher.playerName}): ` + 
-            `**${pl.totalFantasyPoints} points** (${round_to_precision(pl.advancedProjectedFantasyPoints, 0.01)} projected)`
-        )
+
+        const leagueYear = await this.getLeagueYear();
+        const rankedPlayers: {rank: number, item: FC.Player}[] = 
+            ranked.ranking(leagueYear.players, (pl: FC.Player) => pl.totalFantasyPoints);
+
+        var strings = rankedPlayers.map(ranking => {
+            const pl = ranking.item;
+            const rank = ranking.rank;
+            `**${rank}. ${pl.publisher.publisherName}** (${pl.publisher.playerName}) -- ` + 
+            `**${pl.totalFantasyPoints.toPrecision(2)} points** (${pl.advancedProjectedFantasyPoints.toPrecision(2)} projected)`
+        })
         const to_send = '*Score Report*\n' + strings.join('\n');
         FCBot.logSend(channel, to_send);
         channel.send(to_send);
