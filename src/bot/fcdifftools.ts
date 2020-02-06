@@ -46,7 +46,7 @@ export function cleandate(s: string) {
 }
 
 export function cleannum(n: number): string {
-    return n.toPrecision(2);
+    return n.toPrecision(3);
 }
 
 export function diffMGY(oldMGY: _.Dictionary<FC.MasterGameYear>, newMGY: _.Dictionary<FC.MasterGameYear>): string[] {
