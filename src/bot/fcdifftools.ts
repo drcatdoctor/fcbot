@@ -163,6 +163,8 @@ function updateForGame(oldgame: FC.Game, newgame: FC.Game, key: string, d: any):
                 // don't report the 'was' for this, because it's covered by criticScore .. I guess..
                 return `**${newgame.gameName}** is now worth **${cleannum(points)} points**!`;
             }
+            else
+                return undefined;
         case "willRelease":
             if (d.rhs)
                 return `**${newgame.gameName}** now officially **will release** during this league year.`;
