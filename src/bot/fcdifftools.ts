@@ -32,7 +32,7 @@ function filterOutUninterestingKeys(path: string[], key: string): boolean {
 
 const DATE_REGEXP = new RegExp(/(\d\d\d\d-\d\d-\d\d)T\d\d:\d\d:\d\d/);
 
-function cleandate(s: string) {
+export function cleandate(s: string) {
     if (!s)
         return s;
     const results = DATE_REGEXP.exec(s);
@@ -45,8 +45,8 @@ function cleandate(s: string) {
     }
 }
 
-function cleannum(n: number): string {
-    return n.toPrecision(2);
+export function cleannum(n: number): string {
+    return n.toPrecision(3);
 }
 
 export function diffMGY(oldMGY: _.Dictionary<FC.MasterGameYear>, newMGY: _.Dictionary<FC.MasterGameYear>): string[] {

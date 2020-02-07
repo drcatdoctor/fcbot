@@ -36,7 +36,11 @@ export interface MasterGameYear extends Game {
     subGames: MasterGameYear[],
     boxartFileName: string,
     addedTimestamp: string,
-    error: boolean
+    error: boolean,
+    hypeFactor: number,
+    averageDraftPosition: number,
+    percentStandardGame: number,
+    percentCounterPick: number
     // missing some
 }
 

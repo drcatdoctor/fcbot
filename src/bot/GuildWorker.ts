@@ -135,12 +135,71 @@ export class GuildWorker {
         var strings = rankedPlayers.map(ranking => {
             const pl = ranking.item;
             const rank = ranking.rank;
-            `**${rank}. ${pl.publisher.publisherName}** (${pl.publisher.playerName}) -- ` + 
+            return `**${rank}. ${pl.publisher.publisherName}** (${pl.publisher.playerName}) -- ` + 
             `**${pl.totalFantasyPoints.toPrecision(2)} points** (${pl.advancedProjectedFantasyPoints.toPrecision(2)} projected)`
         })
         const to_send = '*Score Report*\n' + strings.join('\n');
         FCBot.logSend(channel, to_send);
         channel.send(to_send);
+    }
+
+    static infoForOne(game: FC.MasterGameYear): string {
+        var l1 = `${game.gameName}, a ${game.eligibilitySettings.eligibilityLevel.name} `;
+        if (game.isReleased) {
+            l1 += "released on " + FCDiff.cleandate(game.releaseDate);
+        } else if (game.releaseDate) {
+            l1 += "scheduled for " + FCDiff.cleandate(game.releaseDate);
+        } else if (game.estimatedReleaseDate) {
+            l1 += "estimated release " + FCDiff.cleandate(game.estimatedReleaseDate);
+        }
+        var l2s: string[] = [];
+        if (game.criticScore) {
+            l2s.push( "Critic score " + FCDiff.cleannum(game.criticScore) );
+        }
+        if (game.projectedFantasyPoints) {
+            l2s.push( "Projected points " + FCDiff.cleannum(game.projectedFantasyPoints) );
+        }     
+        var l3s: string[] = [];   
+        if (game.percentStandardGame !== undefined) {
+            l3s.push( `Picked ${FCDiff.cleannum(game.percentStandardGame * 100.0)}% of the time` );
+        }
+        if (game.percentCounterPick !== undefined) {
+            l3s.push( `Counterpicked ${FCDiff.cleannum(game.percentCounterPick * 100.0)}% of the time` );
+        }
+        var line = l1;
+        if (l2s) {
+            line = line + "\n" + l2s.join(' - ');
+        }
+        if (l3s) {
+            line = line + "\n" + l3s.join("\n");
+        }
+        return line;
+    }
+
+    async checkOne(channel: Discord.TextChannel, gameSearch: string) {
+        var MGYdict = this.lastMasterGameYear;
+        if (!MGYdict) {
+            MGYdict = await this.getMGY();
+        }
+        var search = gameSearch.toLowerCase();
+
+        var hits = _.values(MGYdict).filter( mgy => mgy.gameName.toLowerCase().includes(search) );
+
+        var result: string;
+        if (hits.length > 5) {
+            result = `Got ${hits.length} hits for "${gameSearch}" - be more specific.`
+        }
+        else if (hits.length > 1) {
+            result = `Which one: ${hits.map( mgy => mgy.gameName ).join(', ')}?`
+        }
+        else if (hits.length == 1) {
+            result = GuildWorker.infoForOne(hits[0]);
+        }
+        else {
+            result = `No results for "${gameSearch}".`;
+        }
+        FCBot.logSend(channel, result);
+        channel.send(result);
     }
 
     async startSchedule() {
