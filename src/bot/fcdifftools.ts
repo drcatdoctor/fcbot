@@ -136,15 +136,12 @@ function updateForGame(oldgame: FC.Game, newgame: FC.Game, key: string, d: any):
     switch (key) {
         case "released": // publishers view
         case "isReleased": // master game list view
-            if (d.rhs)
+            if (!d.lhs && d.rhs)
                 return `**${newgame.gameName}** is out!`;
             else
                 return;
         case "criticScore":
-            if (!d.rhs) {
-                return addLhsNum(`**${newgame.gameName}** critic score was removed??`, d);
-            }
-            else if (!d.lhs) {
+            if (!d.lhs && d.rhs) {
                 return `**${newgame.gameName}** now has a score: **${cleannum(d.rhs)}**`;
             }
             else if (d.lhs && Math.abs(d.rhs - d.lhs) >= NUMERICAL_DIFF_REPORT_THRESHOLD) {
@@ -155,10 +152,7 @@ function updateForGame(oldgame: FC.Game, newgame: FC.Game, key: string, d: any):
             else
                 return undefined;
         case "fantasyPoints":
-            if (!d.rhs) {
-                return addLhsNum(`**${newgame.gameName}** fantasy points removed??`, d);
-            }
-            else if (!d.lhs || (d.lhs && Math.abs(d.rhs - d.lhs) >= NUMERICAL_DIFF_REPORT_THRESHOLD)) {
+            if (!d.lhs || (d.lhs && Math.abs(d.rhs - d.lhs) >= NUMERICAL_DIFF_REPORT_THRESHOLD)) {
                 const points = (<FC.PublisherGame>newgame).counterPick ? -(d.rhs) : d.rhs;
                 // don't report the 'was' for this, because it's covered by criticScore .. I guess..
                 return `**${newgame.gameName}** is now worth **${cleannum(points)} points**!`;
@@ -166,9 +160,9 @@ function updateForGame(oldgame: FC.Game, newgame: FC.Game, key: string, d: any):
             else
                 return undefined;
         case "willRelease":
-            if (d.rhs)
+            if (!d.lhs && d.rhs)
                 return `**${newgame.gameName}** now officially **will release** during this league year.`;
-            else
+            else if (d.lhs && !d.rhs)
                 return `**${newgame.gameName}** now officially **will not release** during this league year.`;
         case 'estimatedReleaseDate':
         case 'releaseDate':
