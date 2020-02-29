@@ -144,7 +144,7 @@ function updateForGame(oldgame: FC.Game, newgame: FC.Game, key: string, d: any):
             if (!d.lhs && d.rhs) {
                 return `**${newgame.gameName}** now has a score: **${cleannum(d.rhs)}**`;
             }
-            else if (d.lhs && Math.abs(d.rhs - d.lhs) >= NUMERICAL_DIFF_REPORT_THRESHOLD) {
+            else if (d.lhs && d.rhs && Math.abs(d.rhs - d.lhs) >= NUMERICAL_DIFF_REPORT_THRESHOLD) {
                 // this could mean that maybe a critic score could slide many, many points very slowly
                 // but this will have to do for now I guess
                 return addLhsNum(`**${newgame.gameName}** critic score is now **${cleannum(d.rhs)}**!`, d);
