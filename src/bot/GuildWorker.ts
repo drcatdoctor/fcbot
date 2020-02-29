@@ -404,6 +404,7 @@ export class GuildWorker {
         var first_send = true;
         var to_send = "";
         const separator = '\n';
+        const self = this; // for closure
         _.chunk(filteredUpdates, 6).forEach(function (chunk) {
             if (first_send) {
                 to_send = "*News!*" + separator + chunk.join(separator);
@@ -411,7 +412,7 @@ export class GuildWorker {
             } else {
                 to_send = chunk.join(separator);
             }
-            this.channels.forEach( (channel: Discord.TextChannel) => {
+            self.channels.forEach( (channel: Discord.TextChannel) => {
                 FCBot.logSend(channel, to_send);
                 channel.send(to_send);
             })
