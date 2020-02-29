@@ -74,7 +74,7 @@ export class Client extends EventEmitter {
                     return response.body;
                 }
                 else {
-                    throw new Error(`Got ${response.statusCode}: ` + response.body);
+                    throw new Error(`For ${path}, ${queryStringParams}\nGot ${response.statusCode}: ` + response.body);
                 }
             });
         }
