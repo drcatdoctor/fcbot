@@ -80,7 +80,6 @@ export class GuildWorker {
         if (state) {
             console.log("Found state");
             console.log(state);
-            this.fc.auth = state.fcAuth;
             this.league = state.league;
             for (var name of state.channelNames) {
                 var found = <Discord.TextChannel>this.guild.channels.find(c => c.name == name && c.type == "text");
@@ -90,7 +89,15 @@ export class GuildWorker {
                     this.channels.push(found);
                 }
             }
-            if (state.running) {
+            if (state.fcAuth.length > 4096) {
+                // assume there is some problem (there is, due to a problem on the FC server)
+                console.log("Discarding fcAuth value due to ridiculous length");
+                this.sendUpdates(["Authorization reset due to server issue. Please re-login."])
+            }
+            else {
+                this.fc.auth = state.fcAuth;
+            }
+            if (this.fc.auth && state.running) {
                 this.startSchedule();
             }
         }
@@ -359,7 +366,7 @@ export class GuildWorker {
                 updates.push( ... this.updatesForMasterGameYear(newMGY) );
             } 
 
-            this.channels.forEach(c => this.sendUpdatesToChannel(c, updates))
+            this.sendUpdates(updates);
             this.recordInMemcache();
         }
         catch (err) {
@@ -378,7 +385,7 @@ export class GuildWorker {
         }
     }
 
-    private sendUpdatesToChannel(channel: Discord.TextChannel, updates: string[]) {
+    private sendUpdates(updates: string[]) {
         if(updates.length > 40) {
             console.log("Obviously something is wrong, not sending the", updates.length, "updates queued for channel");
             return;
@@ -400,8 +407,10 @@ export class GuildWorker {
             } else {
                 to_send = chunk.join(separator);
             }
-            FCBot.logSend(channel, to_send);
-            channel.send(to_send);
+            this.channels.forEach( (channel: Discord.TextChannel) => {
+                FCBot.logSend(channel, to_send);
+                channel.send(to_send);
+            })
         });
     
         this.updateCache.mset(updates.map(function (upd) { return {key: upd, val: 1}; }));
