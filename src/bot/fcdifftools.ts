@@ -152,7 +152,7 @@ function updateForGame(oldgame: FC.Game, newgame: FC.Game, key: string, d: any):
             else
                 return undefined;
         case "fantasyPoints":
-            if (!d.lhs || (d.lhs && Math.abs(d.rhs - d.lhs) >= NUMERICAL_DIFF_REPORT_THRESHOLD)) {
+            if (d.rhs && !d.lhs || (d.lhs && Math.abs(d.rhs - d.lhs) >= NUMERICAL_DIFF_REPORT_THRESHOLD)) {
                 const points = (<FC.PublisherGame>newgame).counterPick ? -(d.rhs) : d.rhs;
                 // don't report the 'was' for this, because it's covered by criticScore .. I guess..
                 return `**${newgame.gameName}** is now worth **${cleannum(points)} points**!`;
