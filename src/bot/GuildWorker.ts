@@ -75,6 +75,8 @@ export class GuildWorker {
     }
 
     private async loadState() {
+        // NOTE called in constructor
+
         var state: WorkerSaveState = await this.mongo.get(this.guild.id);
         console.log("loadState");
         if (state) {
@@ -92,7 +94,9 @@ export class GuildWorker {
             if (state.fcAuth && state.fcAuth.token && state.fcAuth.token.length > 4096) {
                 // assume there is some problem (there is, due to a problem on the FC server)
                 console.log("Discarding fcAuth value due to ridiculous length");
-                this.sendUpdates(["Authorization reset due to server issue. Please re-login."])
+                this.channels.forEach( ch => {
+                    ch.sendMessage("Authorization reset due to server issue. Please re-login.");
+                });
             }
             else {
                 this.fc.auth = state.fcAuth;
