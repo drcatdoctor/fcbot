@@ -5,7 +5,7 @@ var ranked = require('ranked');
 
 const ordinal = require('ordinal');
 
-const NUMERICAL_DIFF_REPORT_THRESHOLD = 1.0;
+const NUMERICAL_DIFF_REPORT_THRESHOLD = 2.0;
 
 // things we don't care about.
 const FILTER_OUT_KEYS = [
@@ -187,6 +187,33 @@ function diffPublisherGames(oldpub: FC.Publisher, newpub: FC.Publisher, d: any):
     return updates;
 }
 
+interface Ranking<T> {
+    rank: number,
+    item: T
+}
+
+interface RankResult {
+    rank: number,
+    isTie: boolean
+}
+
+function makeRanks<T>(items: T[], key: ((item: T) => any) | string): Ranking<T>[] {
+    if (typeof key === "string") {
+        return ranked.ranking(items, (item: T) => item[key]);
+    }
+    else {
+        return ranked.ranking(items, key);
+    }
+}
+
+function getRank<T>(ranks: Ranking<T>[], item: T): RankResult {
+    const ranking = ranks.find(value => value.item === item);
+    return {
+        'rank': ranking.rank,
+        'isTie': _.filter(ranks, rp => rp.rank === ranking.rank).length > 1
+    };
+}
+
 export function diffLeagueYear(oldData: FC.LeagueYear, newData: FC.LeagueYear): string[] {
     const difflist = deepdiff.diff(oldData, newData,
         (p, k) => filterAnythingButPublishers(p, k) || filterOutUninterestingKeys(p, k)
@@ -196,9 +223,8 @@ export function diffLeagueYear(oldData: FC.LeagueYear, newData: FC.LeagueYear): 
     }
     let updates: string[] = [];
     
-    // it's so rank
-    const rankedPubs: {rank: number, item: FC.Publisher}[] = 
-        ranked.ranking(newData.publishers, (pub: FC.Publisher) => pub.totalFantasyPoints);
+    const newRanks = makeRanks(newData.publishers, 'totalFantasyPoints');
+    const oldRanks = makeRanks(oldData.publishers, 'totalFantasyPoints');
 
     difflist.forEach(function (d: any) {
         console.log(d);
@@ -210,16 +236,23 @@ export function diffLeagueYear(oldData: FC.LeagueYear, newData: FC.LeagueYear): 
                 updates = _.union(updates, diffPublisherGames(oldpub, newpub, d));
             }
             else if (d.path[2] == 'totalFantasyPoints') {
-                const ranking = rankedPubs.find(value => value.item === newpub);
-                const isTie = (_.filter(rankedPubs, rp => rp.rank == ranking.rank).length > 1)
+                const newRanking = getRank(newRanks, newpub);
+                const oldRanking = getRank(oldRanks, oldpub);
 
-                const rankStr = (isTie ? "tied for " : "") + ordinal(ranking.rank);
-                // totalFantasyPoints can't be cleaned normally due to the need for ranking
+                const rankStr = (newRanking.isTie ? "tied for " : "") + ordinal(newRanking.rank);
+
                 const newScore = cleannum(d.rhs);
                 const oldScore = cleannum(d.lhs);
 
-                updates.push(`**${newpub.publisherName}** (Player: ${newpub.playerName}) has a new score: ` +
-                    `**${newScore}**! (was: ${oldScore}). They are currently **${rankStr}**.`);
+                // skip this unless it's interesting
+                if (newRanking.rank == oldRanking.rank && newRanking.isTie == oldRanking.isTie && 
+                    Math.abs(d.rhs - d.lhs) < NUMERICAL_DIFF_REPORT_THRESHOLD) {
+                        // don't bother
+                    }
+                else {
+                    updates.push(`**${newpub.publisherName}** (Player: ${newpub.playerName}) has a new score: ` +
+                        `**${newScore}**! (was: ${oldScore}). They are **${rankStr}**.`);
+                }
             }
         }
     });
