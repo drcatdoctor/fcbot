@@ -147,7 +147,7 @@ export class GuildWorker {
             const pl = ranking.item;
             const rank = ranking.rank;
             return `**${rank}. ${pl.publisher.publisherName}** (${pl.publisher.playerName}) -- ` + 
-            `**${pl.totalFantasyPoints.toPrecision(2)} points** (${pl.advancedProjectedFantasyPoints.toPrecision(2)} projected)`
+            `**${pl.totalFantasyPoints.toPrecision(2)} points**`
         })
         const to_send = '*Score Report*\n' + strings.join('\n');
         FCBot.logSend(channel, to_send);
