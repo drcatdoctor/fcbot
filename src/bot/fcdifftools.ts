@@ -251,7 +251,7 @@ export function diffLeagueYear(oldData: FC.LeagueYear, newData: FC.LeagueYear): 
                     }
                 else {
                     updates.push(`**${newpub.publisherName}** (Player: ${newpub.playerName}) has a new score: ` +
-                        `**${newScore}**! (was: ${oldScore}). They are **${rankStr}**.`);
+                        `**${newScore}**! (was: ${oldScore}). They are now **${rankStr}**.`);
                 }
             }
         }
