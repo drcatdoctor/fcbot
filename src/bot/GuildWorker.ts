@@ -155,21 +155,22 @@ export class GuildWorker {
     }
 
     static infoForOne(game: FC.MasterGameYear): string {
-        var l1 = `${game.gameName}, a ${game.eligibilitySettings.eligibilityLevel.name} `;
+        var l1 = `**${game.gameName}**, a ${game.eligibilitySettings.eligibilityLevel.name} `;
         if (game.isReleased) {
-            l1 += "released on " + FCDiff.cleandate(game.releaseDate);
+            l1 += "released on **" + FCDiff.cleandate(game.releaseDate) + "**";
         } else if (game.releaseDate) {
-            l1 += "scheduled for " + FCDiff.cleandate(game.releaseDate);
+            l1 += "scheduled for **" + FCDiff.cleandate(game.releaseDate) + "**";
         } else if (game.estimatedReleaseDate) {
-            l1 += "estimated release " + FCDiff.cleandate(game.estimatedReleaseDate);
+            l1 += "estimated release **" + FCDiff.cleandate(game.estimatedReleaseDate) + "**";
         }
         var l2s: string[] = [];
         if (game.criticScore) {
-            l2s.push( "Critic score " + FCDiff.cleannum(game.criticScore) );
+            l2s.push( "Critic score: **" + FCDiff.cleannum(game.criticScore) + "**");
         }
-        if (game.projectedFantasyPoints) {
-            l2s.push( "Projected points " + FCDiff.cleannum(game.projectedFantasyPoints) );
-        }     
+        else if (game.projectedFantasyPoints) {
+            l2s.push( "Projected points: **" + FCDiff.cleannum(game.projectedFantasyPoints) + "**");
+        } 
+        /*    
         var l3s: string[] = [];   
         if (game.percentStandardGame !== undefined) {
             l3s.push( `Picked ${FCDiff.cleannum(game.percentStandardGame * 100.0)}% of the time` );
@@ -177,13 +178,16 @@ export class GuildWorker {
         if (game.percentCounterPick !== undefined) {
             l3s.push( `Counterpicked ${FCDiff.cleannum(game.percentCounterPick * 100.0)}% of the time` );
         }
+        */
         var line = l1;
         if (l2s) {
             line = line + "\n" + l2s.join(' - ');
         }
+        /*
         if (l3s) {
             line = line + "\n" + l3s.join("\n");
         }
+        */
         return line;
     }
 
