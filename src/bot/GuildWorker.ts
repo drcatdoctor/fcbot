@@ -1,7 +1,7 @@
 import * as NodeCache from "node-cache";
 
 import schedule = require('node-schedule');
-import {Mutex} from 'async-mutex';
+import { Mutex } from 'async-mutex';
 import * as FCDiff from "./fcdifftools";
 import * as FC from "../fc/main";
 import * as Client from "../fc/Client";
@@ -64,7 +64,7 @@ export class GuildWorker {
         }
     }
 
-    addChannel(channelToAdd: Discord.TextChannel) { 
+    addChannel(channelToAdd: Discord.TextChannel) {
         this.channels = _.union(this.channels, [channelToAdd]);
         this.saveState();
     }
@@ -94,7 +94,7 @@ export class GuildWorker {
             if (state.fcAuth && state.fcAuth.token && state.fcAuth.token.length > 4096) {
                 // assume there is some problem (there is, due to a problem on the FC server)
                 console.log("Discarding fcAuth value due to ridiculous length");
-                this.channels.forEach( ch => {
+                this.channels.forEach(ch => {
                     ch.sendMessage("Authorization reset due to server issue. Please re-login.");
                 });
             }
@@ -140,14 +140,14 @@ export class GuildWorker {
         }
 
         const leagueYear = await this.getLeagueYear();
-        const rankedPlayers: {rank: number, item: FC.Player}[] = 
+        const rankedPlayers: { rank: number, item: FC.Player }[] =
             ranked.ranking(leagueYear.players, (pl: FC.Player) => pl.totalFantasyPoints);
 
         var strings = rankedPlayers.map(ranking => {
             const pl = ranking.item;
             const rank = ranking.rank;
-            return `**${rank}. ${pl.publisher.publisherName}** (${pl.publisher.playerName}) -- ` + 
-            `**${Math.round(pl.totalFantasyPoints*100)/100} points**`
+            return `**${rank}. ${pl.publisher.publisherName}** (${pl.publisher.playerName}) -- ` +
+                `**${Math.round(pl.totalFantasyPoints * 100) / 100} points**`
         })
         const to_send = '*Score Report*\n' + strings.join('\n');
         FCBot.logSend(channel, to_send);
@@ -165,11 +165,11 @@ export class GuildWorker {
         }
         var l2s: string[] = [];
         if (game.criticScore) {
-            l2s.push( "Critic score: **" + FCDiff.cleannum(game.criticScore) + "**");
+            l2s.push("Critic score: **" + FCDiff.cleannum(game.criticScore) + "**");
         }
         else if (game.projectedFantasyPoints) {
-            l2s.push( "Projected points: **" + FCDiff.cleannum(game.projectedFantasyPoints) + "**");
-        } 
+            l2s.push("Projected points: **" + FCDiff.cleannum(game.projectedFantasyPoints) + "**");
+        }
         /*    
         var l3s: string[] = [];   
         if (game.percentStandardGame !== undefined) {
@@ -198,14 +198,14 @@ export class GuildWorker {
         }
         var search = gameSearch.toLowerCase();
 
-        var hits = _.values(MGYdict).filter( mgy => mgy.gameName.toLowerCase().includes(search) );
+        var hits = _.values(MGYdict).filter(mgy => mgy.gameName.toLowerCase().includes(search));
 
         var result: string;
         if (hits.length > 5) {
             result = `Got ${hits.length} hits for "${gameSearch}" - be more specific.`
         }
         else if (hits.length > 1) {
-            result = `Which one: ${hits.map( mgy => mgy.gameName ).join(', ')}?`
+            result = `Which one: ${hits.map(mgy => mgy.gameName).join(', ')}?`
         }
         else if (hits.length == 1) {
             result = GuildWorker.infoForOne(hits[0]);
@@ -230,7 +230,7 @@ export class GuildWorker {
             schedule.scheduleJob('8-12 1,3,5,7,9,11,13,15,17,19,21,23 * * *', this.doCheck.bind(this, true, "big"));
 
         // let's do small checks every 3 minutes
-        this.jobs["small"] = 
+        this.jobs["small"] =
             schedule.scheduleJob('*/3 * * * *', this.doCheck.bind(this, false, "small"));
 
         // Bids go through Monday evenings at 8PM Eastern
@@ -242,7 +242,7 @@ export class GuildWorker {
         // blah blah Monday morning at 1am.
         this.jobs["drops"] = schedule.scheduleJob('0,30 0-59 1 * * 1', this.doCheck.bind(this, false, "drops"));
 
-        _.forOwn(this.jobs, (job, jobname) => 
+        _.forOwn(this.jobs, (job, jobname) =>
             console.log(`For guild "${this.guild.name}" (${this.guild.id}): the first`, jobname, "job will run at", job.nextInvocation().toString())
         );
 
@@ -270,16 +270,16 @@ export class GuildWorker {
             this.lastLeagueActions = await this.memcache.getLongLived(
                 FCMemcache.leagueActionsKey(this.league)
             );
-        if (!this.lastMasterGameYear) 
+        if (!this.lastMasterGameYear)
             this.lastMasterGameYear = await this.memcache.getLongLived(
                 FCMemcache.masterGameYearKey(this.league.year)
             );
     }
 
     private async recordInMemcache() {
-        this.memcache.setLongLived( FCMemcache.leagueYearKey(this.league), this.lastLeagueYear );
-        this.memcache.setLongLived( FCMemcache.leagueActionsKey(this.league), this.lastLeagueActions );
-        this.memcache.setLongLived( FCMemcache.masterGameYearKey(this.league.year), this.lastMasterGameYear );
+        this.memcache.setLongLived(FCMemcache.leagueYearKey(this.league), this.lastLeagueYear);
+        this.memcache.setLongLived(FCMemcache.leagueActionsKey(this.league), this.lastLeagueActions);
+        this.memcache.setLongLived(FCMemcache.masterGameYearKey(this.league.year), this.lastMasterGameYear);
     }
 
     private updatesForLeagueYear(newLeagueYear: FC.LeagueYear): string[] {
@@ -303,7 +303,7 @@ export class GuildWorker {
         this.lastLeagueActions = newLeagueActions;
         return updates;
     }
-    
+
     private updatesForMasterGameYear(newMGY: _.Dictionary<FC.MasterGameYear>) {
         console.log("Master Game List check");
 
@@ -324,7 +324,7 @@ export class GuildWorker {
             newLeagueYear = await this.fc.getLeagueYear(this.league);
             this.memcache.setLive(memKey, newLeagueYear);
         }
-        return newLeagueYear;        
+        return newLeagueYear;
     }
 
     private async getLeagueActions(): Promise<FC.LeagueAction[]> {
@@ -356,7 +356,7 @@ export class GuildWorker {
             console.log(`Guild "${this.guild.name}" is not available - skipping check until later.`);
             return;
         }
-       const release = await this.jobMutex.acquire();
+        const release = await this.jobMutex.acquire();
         try {
             console.log("Start", jobtype, "check");
             await this.checkForMemcache();
@@ -364,15 +364,18 @@ export class GuildWorker {
             var updates: string[] = [];
 
             var newLeagueYear = await this.getLeagueYear();
-            updates.push( ... this.updatesForLeagueYear(newLeagueYear) );
+            var updateLength = updates.push(... this.updatesForLeagueYear(newLeagueYear));
+            console.log("Currently have", updateLength, "updates");
 
             var newLeagueActions = await this.getLeagueActions();
-            updates.push( ... this.updatesForLeagueActions(newLeagueActions) );
+            updateLength = updates.push(... this.updatesForLeagueActions(newLeagueActions));
+            console.log("Currently have", updateLength, "updates");
 
             if (doMasterCheck) {
                 var newMGY = await this.getMGY();
-                updates.push( ... this.updatesForMasterGameYear(newMGY) );
-            } 
+                updateLength = updates.push(... this.updatesForMasterGameYear(newMGY));
+                console.log("Currently have", updateLength, "updates");
+            }
 
             this.sendUpdates(updates);
             this.recordInMemcache();
@@ -394,7 +397,7 @@ export class GuildWorker {
     }
 
     private sendUpdates(updates: string[]) {
-        if(updates.length > 40) {
+        if (updates.length > 40) {
             console.log("Obviously something is wrong, not sending the", updates.length, "updates queued for channel");
             return;
         }
@@ -403,8 +406,13 @@ export class GuildWorker {
         const uniqUpdates = _.uniq(updates);
 
         // only keep updates that are NOT in the cache.
-        const filteredUpdates = _.filter(uniqUpdates, upd => this.updateCache.get(upd) === undefined );
-    
+        const filteredUpdates = _.filter(uniqUpdates, upd => this.updateCache.get(upd) === undefined);
+
+        console.log("There are", filteredUpdates.length, "updates to send to", this.channels.length, "channels.");
+        if (filteredUpdates.length != uniqUpdates.length) {
+            console.log(uniqUpdates.length - filteredUpdates.length, "updates were filtered out by the updateCache.");
+        }
+
         var first_send = true;
         var to_send = "";
         const separator = '\n';
@@ -416,12 +424,12 @@ export class GuildWorker {
             } else {
                 to_send = chunk.join(separator);
             }
-            self.channels.forEach( (channel: Discord.TextChannel) => {
+            self.channels.forEach((channel: Discord.TextChannel) => {
                 FCBot.logSend(channel, to_send);
                 channel.send(to_send);
             })
         });
-    
-        this.updateCache.mset(updates.map(function (upd) { return {key: upd, val: 1}; }));
+
+        this.updateCache.mset(updates.map(function (upd) { return { key: upd, val: 1 }; }));
     }
 }
