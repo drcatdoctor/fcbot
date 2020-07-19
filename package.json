@@ -18,7 +18,7 @@
     "deep-diff": "^1.0.2",
     "discord.js": "^11.5.1",
     "dotenv": "^8.2.0",
-    "lodash": "^4.17.15",
+    "lodash": "^4.17.19",
     "memjs": "^1.2.2",
     "mongodb": "^3.5.2",
     "node-cache": "^5.1.0",
