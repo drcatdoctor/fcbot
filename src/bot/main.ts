@@ -6,6 +6,8 @@ import { FCMongo } from './FCMongo';
 
 require('dotenv').config()
 
+const GAME_YEAR = 2020;
+
 export class FCBot {
 
     discord: Discord.Client;
@@ -95,6 +97,7 @@ export class FCBot {
             worker.stopSchedule();
             this.send(channel, "Stopping updates.");
             break;
+
         case "!fcstatus":
             if (worker.running) {
                 this.send(channel, "Updates are running for this server.")
@@ -103,7 +106,19 @@ export class FCBot {
             }
             this.reportChannels(channel, worker);
             break;
+
         case "!fcstart":
+            const channelNamesList = worker.getChannelNamesList();
+            if (channelNamesList.length == 0) {
+                this.send(channel, "No update channel is set. Use !fcadd <channelname>. (No # in the channel name)");
+                return;
+            }
+
+            if (!worker.hasLeague()) {
+                this.send(channel, "Updates will not be specific to a league (use !fclogin for private leagues* or !fcleague for public leagues)");
+                this.send(channel, "(* note - !fclogin requires you to put your password in the channel so you probably shouldn't use it. Wait for fcbot updates... soon?)");
+            }
+            
             try {
                 await worker.startSchedule();
                 this.send(channel, "Updates active.")
@@ -113,6 +128,7 @@ export class FCBot {
                 this.send(channel, "Error starting updates: " + err.message);
             }
             break;
+
         case "!fcadd":
             if (args.length != 1) {
                 this.send(channel, "Use !fcadd <channel name>");
@@ -131,6 +147,7 @@ export class FCBot {
             }
             this.reportChannels(channel, worker);
             break;
+
         case "!fcremove":
             if (args.length != 1) {
                 this.send(channel, "Use !fcremove <channel name>");
@@ -147,13 +164,29 @@ export class FCBot {
             }
             this.reportChannels(channel, worker);
             break;
+
+        case "!fcleague": 
+            if (args.length != 1) {
+                this.send(channel, "Usage: !fcleague <leagueId>");
+                this.send(channel, "Your league ID is in the url for the league page - https://www.fantasycritic.games/league/YOUR-LEAGUE-ID-HERE/2020")
+                return;
+            }
+            worker.setLeague(args[0], GAME_YEAR);
+            this.send(channel, "OK");
+            break;
+
         case "!fclogin":
+            if (args.length != 4) {
+                this.send(channel, "Usage: !fclogin <email> <password> <leagueId> <year>");
+            }
+
             await worker.doFCLogin(args[0], args[1]);
             worker.setLeague(args[2], Number(args[3]));
             this.send(channel, "OK");
             break;
+
         case "!fcadminhelp":
-            this.send(channel, "Commands: !fcstop, !fcstatus, !fcstart, !fcadd, !fcremove");
+            this.send(channel, "Commands: !fcstop, !fcstatus, !fcstart, !fcadd, !fcremove, !fclogin");
             break;
         }
     }
@@ -168,7 +201,13 @@ export class FCBot {
                 this.send(channel, "Error: " + err.message);
             }
             break;
+
         case "!fccheck":
+            if (args.length == 0) {
+                this.send(channel, "Usage: !fccheck <game name to search>");
+                return;
+            }
+
             try {
                 await worker.checkOne(channel, args.join(" "));
             }
@@ -176,8 +215,9 @@ export class FCBot {
                 this.send(channel, "Error: " + err.message);
             }
             break;
+
         case "!fchelp":
-            this.send(channel, "Commands: . Also see !fcadminhelp");
+            this.send(channel, "Commands: !fccheck <game name to search>, !fcscore. Also see !fcadminhelp");
             break;
         }
     }

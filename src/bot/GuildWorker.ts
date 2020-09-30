@@ -14,6 +14,8 @@ import { FCMemcache } from './FCMemcache'
 import { FCMongo } from './FCMongo'
 import { FCBot } from "./main";
 
+const GAME_YEAR = 2020;
+
 export interface WorkerSaveState {
     guildId: string,
     fcAuth: any,
@@ -131,6 +133,14 @@ export class GuildWorker {
         this.saveState();
     }
 
+    hasLeague() {
+        if (this.league) {
+            return true;
+        } else {
+            return false;
+        }
+    }
+
     async doScoreReport(channel: Discord.TextChannel) {
         if (!this.league) {
             throw new Error("can't do score without league set");
@@ -218,12 +228,6 @@ export class GuildWorker {
     }
 
     async startSchedule() {
-        if (!this.league) {
-            throw new Error("can't start guild schedule without league set");
-        }
-        if (!this.fc.auth) {
-            throw new Error("can't start guild schedule without FC client logged in");
-        }
         // the site update seems to finish at */2:08, so let's do the big check every 1 min from :08 to :12.
         // but also adjust for UTC, so it's not 2 4 6 .. it's 7 9 11 ...
         this.jobs["big"] =
@@ -262,24 +266,30 @@ export class GuildWorker {
     }
 
     private async checkForMemcache() {
-        if (!this.lastLeagueYear)
-            this.lastLeagueYear = await this.memcache.getLongLived(
-                FCMemcache.leagueYearKey(this.league)
-            );
-        if (!this.lastLeagueActions)
-            this.lastLeagueActions = await this.memcache.getLongLived(
-                FCMemcache.leagueActionsKey(this.league)
-            );
+        if (this.league) {
+            if (!this.lastLeagueYear)
+                this.lastLeagueYear = await this.memcache.getLongLived(
+                    FCMemcache.leagueYearKey(this.league)
+                );
+            if (!this.lastLeagueActions)
+                this.lastLeagueActions = await this.memcache.getLongLived(
+                    FCMemcache.leagueActionsKey(this.league)
+                );
+        }
+
         if (!this.lastMasterGameYear)
             this.lastMasterGameYear = await this.memcache.getLongLived(
-                FCMemcache.masterGameYearKey(this.league.year)
+                FCMemcache.masterGameYearKey(GAME_YEAR)
             );
     }
 
     private async recordInMemcache() {
-        this.memcache.setLongLived(FCMemcache.leagueYearKey(this.league), this.lastLeagueYear);
-        this.memcache.setLongLived(FCMemcache.leagueActionsKey(this.league), this.lastLeagueActions);
-        this.memcache.setLongLived(FCMemcache.masterGameYearKey(this.league.year), this.lastMasterGameYear);
+        if (this.league) {
+            this.memcache.setLongLived(FCMemcache.leagueYearKey(this.league), this.lastLeagueYear);
+            this.memcache.setLongLived(FCMemcache.leagueActionsKey(this.league), this.lastLeagueActions);
+        }
+
+        this.memcache.setLongLived(FCMemcache.masterGameYearKey(GAME_YEAR), this.lastMasterGameYear);
     }
 
     private updatesForLeagueYear(newLeagueYear: FC.LeagueYear): string[] {
@@ -338,10 +348,10 @@ export class GuildWorker {
     }
 
     private async getMGY(): Promise<_.Dictionary<FC.MasterGameYear>> {
-        const memKey = FCMemcache.masterGameYearKey(this.league.year);
+        const memKey = FCMemcache.masterGameYearKey(GAME_YEAR);
         var newMGYRaw: FC.MasterGameYear[] = await this.memcache.getLive(memKey);
         if (!newMGYRaw) {
-            newMGYRaw = await this.fc.getMasterGameYear(this.league.year);
+            newMGYRaw = await this.fc.getMasterGameYear(GAME_YEAR);
             this.memcache.setLive(memKey, newMGYRaw);
         }
         return _.keyBy(newMGYRaw, game => game.masterGameID);
@@ -363,13 +373,15 @@ export class GuildWorker {
 
             var updates: string[] = [];
 
-            var newLeagueYear = await this.getLeagueYear();
-            var updateLength = updates.push(... this.updatesForLeagueYear(newLeagueYear));
-            console.log("Currently have", updateLength, "updates");
-
-            var newLeagueActions = await this.getLeagueActions();
-            updateLength = updates.push(... this.updatesForLeagueActions(newLeagueActions));
-            console.log("Currently have", updateLength, "updates");
+            if (this.league) {
+                var newLeagueYear = await this.getLeagueYear();
+                var updateLength = updates.push(... this.updatesForLeagueYear(newLeagueYear));
+                console.log("Currently have", updateLength, "updates");
+    
+                var newLeagueActions = await this.getLeagueActions();
+                updateLength = updates.push(... this.updatesForLeagueActions(newLeagueActions));
+                console.log("Currently have", updateLength, "updates");
+            }
 
             if (doMasterCheck) {
                 var newMGY = await this.getMGY();

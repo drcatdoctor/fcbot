@@ -79,7 +79,24 @@ export class Client extends EventEmitter {
             });
         }
         else {
-            throw new Error("FC get() called without login() called first");
+            // try it?
+            const getPromise = rp.get(_.defaults({
+                url: this.BASE_URL + path,
+                qs: queryStringParams,
+                simple: false,
+                resolveWithFullResponse: true,
+            }, request_options));
+            return getPromise.then(function (response) {
+                if (response.statusCode == 403) {
+                    throw new Error(`Unauthorized -- you probably need to do !fclogin first.`);
+                }
+                else if (response.statusCode == 200) {
+                    return response.body;
+                }
+                else {
+                    throw new Error(`For ${path}, ${queryStringParams}\nGot ${response.statusCode}: ` + response.body);
+                }
+            });            
         }
     }
     async getLeagueYear(league: League): Promise<LeagueYear> {
