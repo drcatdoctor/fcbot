@@ -103,7 +103,7 @@ export class GuildWorker {
             else {
                 this.fc.auth = state.fcAuth;
             }
-            if (this.fc.auth && state.running) {
+            if (state.running) {
                 this.startSchedule();
             }
         }
