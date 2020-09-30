@@ -9,17 +9,20 @@ export class FCMongo {
     mongo: Mongo.MongoClient;
     connected: boolean = false;
 
-    COLLECTION_NAME = "fcbot";
+    COLLECTION_NAME = "fcbotdev";
 
     constructor() {
-        if (!process.env.MONGODB_URI) {
+        // have to support both because of a weird heroku thing. (MONGODB_URI will be auto-deleted in heroku environments in November 2020 due to mLab discontinuing service, it's a whole thing.)
+        const mongo_uri = process.env.MONGO_URI || process.env.MONGODB_URI;
+
+        if (!mongo_uri) {
             console.log("No MONGODB_URI set, no mongo for you");
         } else {
-            this.mongo = new Mongo.MongoClient(process.env.MONGODB_URI, {
+            this.mongo = new Mongo.MongoClient(mongo_uri, {
                 //useUnifiedTopology: true,
                 loggerLevel: 'warn'
             });
-            console.log("mongo connecting to", process.env.MONGODB_URI);
+            console.log("mongo connecting to", mongo_uri);
         }
     }
 
