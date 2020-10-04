@@ -145,9 +145,6 @@ export class GuildWorker {
         if (!this.league) {
             throw new Error("can't do score without league set");
         }
-        if (!this.fc.auth) {
-            throw new Error("can't do score without FC client logged in");
-        }
 
         const leagueYear = await this.getLeagueYear();
         const rankedPlayers: { rank: number, item: FC.Player }[] =
