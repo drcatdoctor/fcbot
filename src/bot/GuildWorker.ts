@@ -225,10 +225,12 @@ export class GuildWorker {
     }
 
     async startSchedule() {
-        // the site update seems to finish at */2:08, so let's do the big check every 1 min from :08 to :12.
-        // but also adjust for UTC, so it's not 2 4 6 .. it's 7 9 11 ...
+        // the big site updates happens every even hour, so let's do the big check every few mins until :10.
+        // skip multiples of three so we don't collide with small checks.
+        // this should only be every other hour, but due to UTC and daylight savings times, I don't want to 
+        // deal with that shit, so let's just try every hour and half the time this will be wrong.
         this.jobs["big"] =
-            schedule.scheduleJob('8-12 1,3,5,7,9,11,13,15,17,19,21,23 * * *', this.doCheck.bind(this, true, "big"));
+            schedule.scheduleJob('1,2,4,5,7,10 * * * *', this.doCheck.bind(this, true, "big"));
 
         // let's do small checks every 3 minutes
         this.jobs["small"] =
@@ -237,17 +239,17 @@ export class GuildWorker {
         // Bids go through Monday evenings at 8PM Eastern
         // heroku times are in UTC, which makes this Tuesday morning at 1am.
         //                                       s    m    h D M W
-        this.jobs["bids"] = schedule.scheduleJob('0,30 0-59 1 * * 2', this.doCheck.bind(this, false, "bids"));
+        this.jobs["bids"] = schedule.scheduleJob('0,30 0,1,2,4,5 1 * * 2', this.doCheck.bind(this, false, "bids"));
 
         // Dropping goes through Sunday evenings at 8PM Eastern.
         // blah blah Monday morning at 1am.
-        this.jobs["drops"] = schedule.scheduleJob('0,30 0-59 1 * * 1', this.doCheck.bind(this, false, "drops"));
+        this.jobs["drops"] = schedule.scheduleJob('0,30 0,1,2,4,5 1 * * 1', this.doCheck.bind(this, false, "drops"));
 
         _.forOwn(this.jobs, (job, jobname) =>
             console.log(`For guild "${this.guild.name}" (${this.guild.id}): the first`, jobname, "job will run at", job.nextInvocation().toString())
         );
 
-        this.doCheck(true, "startup");
+        this.doCheck(true, "startup phase 1").then(_ => this.doCheck(false, "startup phase 2"));
         this.running = true;
         console.log("after start saveState");
         this.saveState();
@@ -370,19 +372,18 @@ export class GuildWorker {
 
             var updates: string[] = [];
 
-            if (this.league) {
+            if (doMasterCheck) {
+                var newMGY = await this.getMGY();
+                updateLength = updates.push(... this.updatesForMasterGameYear(newMGY));
+                console.log("Currently have", updateLength, "updates");
+            }
+            else if (this.league) {
                 var newLeagueYear = await this.getLeagueYear();
                 var updateLength = updates.push(... this.updatesForLeagueYear(newLeagueYear));
                 console.log("Currently have", updateLength, "updates");
     
                 var newLeagueActions = await this.getLeagueActions();
                 updateLength = updates.push(... this.updatesForLeagueActions(newLeagueActions));
-                console.log("Currently have", updateLength, "updates");
-            }
-
-            if (doMasterCheck) {
-                var newMGY = await this.getMGY();
-                updateLength = updates.push(... this.updatesForMasterGameYear(newMGY));
                 console.log("Currently have", updateLength, "updates");
             }
 
