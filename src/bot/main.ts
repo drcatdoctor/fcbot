@@ -234,6 +234,10 @@ export class FCBot {
     }
 
     handleGuildCreate(guild: Discord.Guild) {
+        if (this.workers[guild.id]) {
+            console.log(`ERROR: ${guild.id} already in workers set - not creating a new one`);
+            return;
+        }
         console.log(`Added to guild "${guild.name}" (${guild.id})`);
         this.initializeGuild(guild);
     }
