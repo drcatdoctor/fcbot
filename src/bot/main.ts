@@ -52,10 +52,14 @@ export class FCBot {
 
         if(!guild || message.author.bot) return;
 
-        // it's me, catdoctor
-        const MY_USER_ID = "229531028790706177";
 
-        const isAdmin = (message.member.hasPermission('ADMINISTRATOR') || message.author.id == MY_USER_ID);
+        const originator = message.member;
+
+        var isAdmin = originator ? originator.hasPermission('ADMINISTRATOR') : false;
+
+        if (!originator) {
+            console.log("message.member was null");
+        }
 
         const args = message.content.split(/\s+/g);
         if (!args)

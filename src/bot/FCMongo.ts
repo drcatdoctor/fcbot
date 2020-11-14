@@ -19,7 +19,7 @@ export class FCMongo {
             console.log("No MONGODB_URI set, no mongo for you");
         } else {
             this.mongo = new Mongo.MongoClient(mongo_uri, {
-                //useUnifiedTopology: true,
+                useUnifiedTopology: true,
                 loggerLevel: 'warn'
             });
             console.log("mongo connecting to", mongo_uri);
