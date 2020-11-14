@@ -4,6 +4,15 @@ Hello and welcome to fcbot!
 
 I didn't know if this would work out or not so there's not much documentation.
 
+## Table of contents
+- Using fcbot
+  - [Setup without league updates](#setup-without-league-updates)
+  - [Setup with a public league](#setup-with-a-public-league)
+  - [Setup with a private league](#setup-with-a-public-league)
+- Commands
+  - [For everyone](#for-everyone)
+  - [Admin-only](#admin-only)
+- [FAQ](#faq)
 
 ## Using fcbot
 
@@ -31,7 +40,9 @@ That's it!
 
 You can !fcadd multiple channels if you want.
 
-### Setup with a public league (2020 leagues only for now!)
+### Setup with a public league
+
+***Note: this currently only works with 2020 public leagues. To fix very soon.***
 
 In ANY channel in your server that Fantasy Critic Bot is in:
 ```
@@ -74,15 +85,15 @@ soon. It should be in a PM or something.
 You can find your league ID in the URL of your league's page. 
 https://www.fantasycritic.games/league/YOUR-LEAGUE-ID-HERE/2020
 
-## Everyday commands
+## Command list
 
-### Can be used by anyone
+### For everyone
 
  * `!fcscore`: Show a leaderboard for your league.
  * `!fccheck <search string>`: searches for a game and tells you about it. (Score, classification, release date, etc.)
  * `!fchelp`: Show available commands.
 
-### Can only be used by administrators of your server
+### Admin-only
 
  * `!fcadd <channel name>`: Add a channel that should receive updates from fcbot.
  * `!fcremove <channel name>`: Remove a channel from receiving updates.
