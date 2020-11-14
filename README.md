@@ -4,6 +4,14 @@ Hello and welcome to fcbot!
 
 I didn't know if this would work out or not so there's not much documentation.
 
+fcbot is a bot for https://www.fantasycritic.games/ that will show you:
+* Any changes to master games (new release dates, new games added, new critic scores)
+* Publisher actions in your league (bid won, game dropped, etc)
+* New scores in your league ("Blahblah Co is now in 2nd!" etc)
+* A leaderboard ("!fcscore")
+
+See below on how to use it.
+
 ## Table of contents
 - Using fcbot
   - [Setup without league updates](#setup-without-league-updates)
