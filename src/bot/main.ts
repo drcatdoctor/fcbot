@@ -55,9 +55,14 @@ export class FCBot {
 
         const originator = message.member;
 
-        var isAdmin = originator ? originator.hasPermission('ADMINISTRATOR') : false;
-
-        if (!originator) {
+        var isAdmin = false;
+        if (originator) {
+            // any of these perms counts as bot admin.
+            isAdmin = originator.hasPermission('ADMINISTRATOR')
+                      || originator.hasPermission('MANAGE_GUILD') 
+                      || originator.hasPermission('MANAGE_CHANNELS');
+        }
+        else {
             console.log("message.member was null");
         }
 
