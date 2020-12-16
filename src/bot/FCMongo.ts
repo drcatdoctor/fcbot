@@ -12,11 +12,10 @@ export class FCMongo {
     COLLECTION_NAME = "fcbotdev";
 
     constructor() {
-        // have to support both because of a weird heroku thing. (MONGODB_URI will be auto-deleted in heroku environments in November 2020 due to mLab discontinuing service, it's a whole thing.)
-        const mongo_uri = process.env.MONGO_URI || process.env.MONGODB_URI;
+        const mongo_uri = process.env.MONGO_URI;
 
         if (!mongo_uri) {
-            console.log("No MONGODB_URI set, no mongo for you");
+            console.log("No MONGO_URI set, no mongo for you");
         } else {
             this.mongo = new Mongo.MongoClient(mongo_uri, {
                 useUnifiedTopology: true,

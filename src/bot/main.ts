@@ -6,8 +6,6 @@ import { FCMongo } from './FCMongo';
 
 require('dotenv').config()
 
-const GAME_YEAR = 2020;
-
 export class FCBot {
 
     discord: Discord.Client;
@@ -175,13 +173,13 @@ export class FCBot {
             break;
 
         case "!fcleague": 
-            if (args.length != 1) {
-                this.send(channel, "Usage: !fcleague <leagueId>");
-                this.send(channel, "Your league ID is in the url for the league page - https://www.fantasycritic.games/league/YOUR-LEAGUE-ID-HERE/2020")
+            if (args.length != 2) {
+                this.send(channel, "Usage: !fcleague <leagueId> <leagueYear>");
+                this.send(channel, "Your league ID is in the url for the league page - https://www.fantasycritic.games/league/YOUR-LEAGUE-ID-HERE/YEAR")
                 return;
             }
-            worker.setLeague(args[0], GAME_YEAR);
-            this.send(channel, "OK");
+            worker.setLeague(args[0], Number(args[1]));
+            this.send(channel, "Now tracking league " + args[0] + " for league year " + args[1] + ".");
             break;
 
         case "!fclogin":
@@ -191,7 +189,7 @@ export class FCBot {
 
             await worker.doFCLogin(args[0], args[1]);
             worker.setLeague(args[2], Number(args[3]));
-            this.send(channel, "OK");
+            this.send(channel, "Now tracking league " + args[2] + " for league year " + args[3] + ".");
             break;
 
         case "!fcadminhelp":

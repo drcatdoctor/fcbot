@@ -32,7 +32,7 @@ async function getAllGamesForYear(year) {
     return allGames;
 }
 
-getAllGamesForYear(2020).then( function (gamesArray) {
+getAllGamesForYear(2021).then( function (gamesArray) {
     gamesArray.forEach(function (game) {
         console.log(
             `${game.id}: ${game.name} - ${game.firstReleaseDate}`

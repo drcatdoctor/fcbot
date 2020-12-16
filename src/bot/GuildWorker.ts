@@ -14,8 +14,6 @@ import { FCMemcache } from './FCMemcache'
 import { FCMongo } from './FCMongo'
 import { FCBot } from "./main";
 
-const GAME_YEAR = 2020;
-
 export interface WorkerSaveState {
     guildId: string,
     fcAuth: any,
@@ -278,7 +276,7 @@ export class GuildWorker {
 
         if (!this.lastMasterGameYear)
             this.lastMasterGameYear = await this.memcache.getLongLived(
-                FCMemcache.masterGameYearKey(GAME_YEAR)
+                FCMemcache.masterGameYearKey(this.league.year)
             );
     }
 
@@ -288,7 +286,7 @@ export class GuildWorker {
             this.memcache.setLongLived(FCMemcache.leagueActionsKey(this.league), this.lastLeagueActions);
         }
 
-        this.memcache.setLongLived(FCMemcache.masterGameYearKey(GAME_YEAR), this.lastMasterGameYear);
+        this.memcache.setLongLived(FCMemcache.masterGameYearKey(this.league.year), this.lastMasterGameYear);
     }
 
     private updatesForLeagueYear(newLeagueYear: FC.LeagueYear): string[] {
@@ -347,10 +345,10 @@ export class GuildWorker {
     }
 
     private async getMGY(): Promise<_.Dictionary<FC.MasterGameYear>> {
-        const memKey = FCMemcache.masterGameYearKey(GAME_YEAR);
+        const memKey = FCMemcache.masterGameYearKey(this.league.year);
         var newMGYRaw: FC.MasterGameYear[] = await this.memcache.getLive(memKey);
         if (!newMGYRaw) {
-            newMGYRaw = await this.fc.getMasterGameYear(GAME_YEAR);
+            newMGYRaw = await this.fc.getMasterGameYear(this.league.year);
             this.memcache.setLive(memKey, newMGYRaw);
         }
         return _.keyBy(newMGYRaw, game => game.masterGameID);
