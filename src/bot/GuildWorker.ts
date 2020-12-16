@@ -145,7 +145,7 @@ export class GuildWorker {
 
     async doScoreReport(channel: Discord.TextChannel) {
         if (!this.league) {
-            throw new Error("can't do score without league set");
+            throw new Error("Can't do score without league set. (Check !fcadminhelp for commands.)");
         }
 
         const leagueYear = await this.getLeagueYear();
@@ -159,6 +159,60 @@ export class GuildWorker {
                 `**${Math.round(pl.totalFantasyPoints * 100) / 100} points**`
         })
         const to_send = '*Score Report*\n' + strings.join('\n');
+        FCBot.logSend(channel, to_send);
+        channel.send(to_send);
+    }
+
+    async doPublisherReport(channel: Discord.TextChannel, searchString: string) {
+        if (!this.league) {
+            throw new Error("Can't do publisher report without league set. (Check !fcadminhelp for commands.)");
+        }
+
+        const leagueYear = await this.getLeagueYear();
+        const player = _.find(leagueYear.players, (pl: FC.Player) => 
+            pl.publisher.publisherName.toLowerCase().includes(searchString.toLowerCase())
+        );
+
+        if (!player) {
+            throw new Error(`No publisher matching '${searchString}'. (Use !fcscore for a list.)`)
+        }
+        const pub = player.publisher;
+
+        var strings = [
+            `*Publisher Report: **${pub.publisherName}** (${pub.playerName}) - Total points: **${FCDiff.cleannum(pub.totalFantasyPoints)}***`
+        ];
+
+        strings = strings.concat( pub.games.map(game => {
+            var name = game.gameName;
+            var points = "";
+            var score = "";
+            if (game.counterPick) {
+                name = "(!) " + name;
+            }
+            name = "**" + name + "**";
+            if (game.fantasyPoints !== undefined && game.fantasyPoints != null) {
+                points = " - Points: **" + FCDiff.cleannum(game.fantasyPoints) + "**";
+            }
+            if (game.criticScore !== undefined && game.criticScore != null) {
+                score = " - Rating: **" + FCDiff.cleannum(game.criticScore) + "**";
+            }
+            if (!game.willRelease) {
+                name = name + " - will not release this year";
+            }
+            else if (!game.released) {
+                if (game.releaseDate) {
+                    return `- ${name} - scheduled release ${game.releaseDate}` + score + points;
+                }
+                else {
+                    return `- ${name} - estimated release ${game.estimatedReleaseDate}` + score + points;
+                }
+            }
+            else {
+                return `- ${name}` + score + points; 
+            }
+        }) );
+
+        const to_send = strings.join('\n');
         FCBot.logSend(channel, to_send);
         channel.send(to_send);
     }

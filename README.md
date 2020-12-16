@@ -96,6 +96,7 @@ https://www.fantasycritic.games/league/YOUR-LEAGUE-ID-HERE/YEAR
 ### For everyone
 
  * `!fcscore`: Show a leaderboard for your league.
+ * `!fcpub <publisher name>`: searches for a publisher and tells you about it. (List of games.)
  * `!fccheck <search string>`: searches for a game and tells you about it. (Score, classification, release date, etc.)
  * `!fchelp`: Show available commands.
 

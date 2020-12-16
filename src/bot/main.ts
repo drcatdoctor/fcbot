@@ -227,6 +227,19 @@ export class FCBot {
             }
             break;
 
+        case "!fcpub":
+            if (args.length == 0) {
+                this.send(channel, "Usage: !fcpub <publisher name (or part of it)>");
+                return;
+            }
+            try {
+                await worker.doPublisherReport(channel, args.join(" "));
+            }
+            catch (err) {
+                this.send(channel, "Error: " + err.message);
+            }
+            break;
+    
         case "!fccheck":
             if (args.length == 0) {
                 this.send(channel, "Usage: !fccheck <game name to search>");
@@ -242,7 +255,7 @@ export class FCBot {
             break;
 
         case "!fchelp":
-            this.send(channel, "Commands: !fccheck <game name to search>, !fcscore. Also see !fcadminhelp");
+            this.send(channel, "Commands: !fccheck <game name to search>, !fcpub <publisher name>, !fcscore. Also see !fcadminhelp");
             break;
         }
     }
