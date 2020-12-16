@@ -131,6 +131,10 @@ export class GuildWorker {
         this.saveState();
     }
 
+    getLeague() {
+        return this.league;
+    }
+
     hasLeague() {
         if (this.league) {
             return true;

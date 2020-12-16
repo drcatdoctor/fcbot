@@ -182,6 +182,24 @@ export class FCBot {
             this.send(channel, "Now tracking league " + args[0] + " for league year " + args[1] + ".");
             break;
 
+        case "!fcyear": 
+            if (!worker.hasLeague()) {
+                this.send(channel, "I am not currently tracking a league, so you can't switch the league year with !fcyear.");
+                return;
+            }
+            if (args.length == 0) {
+                this.send(channel, "The current league year is " + worker.getLeague().year)
+                return;
+            }
+            if (args.length != 1) {
+                this.send(channel, "Usage: !fcyear <leagueYear>");
+                return;
+            }
+            var oldLeague = worker.getLeague();
+            worker.setLeague(oldLeague.id, Number(args[0]));
+            this.send(channel, "Now tracking league " + oldLeague.id + " for league year " + args[0] + ".");
+            break;
+
         case "!fclogin":
             if (args.length != 4) {
                 this.send(channel, "Usage: !fclogin <email> <password> <leagueId> <year>");
@@ -193,7 +211,7 @@ export class FCBot {
             break;
 
         case "!fcadminhelp":
-            this.send(channel, "Commands: !fcstop, !fcstatus, !fcstart, !fcadd, !fcremove, !fclogin");
+            this.send(channel, "Commands: !fcstop, !fcstatus, !fcstart, !fcadd, !fcremove, !fclogin, !fcleague, !fcyear. Type them for more help.");
             break;
         }
     }

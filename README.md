@@ -109,6 +109,7 @@ https://www.fantasycritic.games/league/YOUR-LEAGUE-ID-HERE/YEAR
  * `!fcstop`: Stop posting any updates.
  * `!fcstatus`: List added channels, whether updates are active, etc.
  * `!fcadminhelp`: Show admin commands.
+ * `!fcyear <league year>`: Switch the bot to track the same league, but with a different year. Happy New Year!
 
 ## FAQ
 
