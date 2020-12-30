@@ -308,10 +308,10 @@ export class GuildWorker {
 
         if (!game.isReleased) {
             if (game.dateAdjustedHypeFactor != undefined && game.dateAdjustedHypeFactor != null) {
-                embed.addField("Hype Factor", FCDiff.cleannum(game.dateAdjustedHypeFactor));
+                embed.addField("Hype Factor", FCDiff.cleannum(game.dateAdjustedHypeFactor), true);
             }
             if (game.averageDraftPosition != undefined && game.averageDraftPosition != null) {
-                embed.addField("Average Draft Position", FCDiff.cleannum(game.averageDraftPosition));
+                embed.addField("Average Draft Position", FCDiff.cleannum(game.averageDraftPosition), true);
             }
         } 
 
