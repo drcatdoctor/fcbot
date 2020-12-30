@@ -8,6 +8,8 @@ require('dotenv').config()
 
 export class FCBot {
 
+    public static readonly NEEDS_PERMISSIONS = 18432;
+
     discord: Discord.Client;
     memcache: FCMemcache;
     mongo: FCMongo;
@@ -144,7 +146,7 @@ export class FCBot {
             if (channelName[0] == "#") {
                 channelName = channelName.substring(1);
             }
-            var foundChannel = <Discord.TextChannel>channel.guild.channels.find(
+            var foundChannel = <Discord.TextChannel>channel.guild.channels.cache.find(
                 c => c.name == channelName && c.type == "text"
             );
             if (!foundChannel) {
@@ -163,7 +165,7 @@ export class FCBot {
             if (channelName[0] == "#") {
                 channelName = channelName.substring(1);
             }
-            var foundChannel = <Discord.TextChannel>channel.guild.channels.find(c => c.name == channelName && c.type == "text");
+            var foundChannel = <Discord.TextChannel>channel.guild.channels.cache.find(c => c.name == channelName && c.type == "text");
             if (!foundChannel) {
                 this.send(channel, `I couldn't find a channel matching "${channelName}".`);
             } else {
@@ -245,6 +247,10 @@ export class FCBot {
                 this.send(channel, "Usage: !fccheck <game name to search>");
                 return;
             }
+            if (!worker.hasLeague()) {
+                this.send(channel, "A league must be set before using !fccheck, so I know what year to look at.");
+                return;
+            }
 
             try {
                 await worker.checkOne(channel, args.join(" "));
@@ -264,9 +270,9 @@ export class FCBot {
         console.log(`Logged in as ${this.discord.user.tag}`);
         var myGuilds: Discord.Collection<string, Discord.Guild>;
         if (process.env.LIMIT_TO_GUILD_ID) {
-            myGuilds = this.discord.guilds.filter( (value, key) => key == process.env.LIMIT_TO_GUILD_ID);
+            myGuilds = this.discord.guilds.cache.filter( (value, key) => key == process.env.LIMIT_TO_GUILD_ID);
         } else {
-            myGuilds = this.discord.guilds;
+            myGuilds = this.discord.guilds.cache;
         }
         myGuilds.forEach(g => this.initializeGuild(g));
     }

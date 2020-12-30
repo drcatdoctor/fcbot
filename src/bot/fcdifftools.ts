@@ -30,6 +30,11 @@ function filterOutUninterestingKeys(path: string[], key: string): boolean {
     return FILTER_OUT_KEYS.includes(key);
 }
 
+function filterAnythingButStatusAndMessages(path: string[], key: string): boolean {
+    return (path.length == 0 && (key != 'managerMessages' && key != 'playStatus'));
+}
+
+
 const DATE_REGEXP = new RegExp(/(\d\d\d\d-\d\d-\d\d)T\d\d:\d\d:\d\d/);
 
 export function cleandate(s: string) {
@@ -255,8 +260,47 @@ export function diffLeagueYear(oldData: FC.LeagueYear, newData: FC.LeagueYear): 
                 }
             }
         }
+        else if (d.path[0] == 'publishers' && d.path.length == 1 && d.kind == 'N') {
+            const newpub: FC.Publisher = d.rhs;
+            updates.push(`New publisher added: **${newpub.publisherName}** (Player: ${newpub.playerName})`)
+        }
     });
     console.log("--- Publisher updates");
+    console.log(updates);
+    return updates;
+}
+
+const playStatusMap = {
+    "Drafting": "The draft is underway!",
+    "DraftPaused": "The draft is paused!",
+    "DraftFinal": "The draft is over! The league has started play!",
+    "NotStartedDraft": "The draft is not yet active."
+};
+
+export function diffLeagueYearStatusAndMessages(oldData: FC.LeagueYear, newData: FC.LeagueYear): string[] {
+    const difflist = deepdiff.diff(oldData, newData,
+        (p, k) => filterAnythingButStatusAndMessages(p, k)
+    );
+    if (!difflist) {
+        return [];
+    }
+    let updates: string[] = [];
+    
+    var newMessages = 0;
+    difflist.forEach(function (d: any) {
+        console.log(d);
+        if (d.path[0] == "playStatus" && d.path.length == 2 && d.path[1] == "playStatus") {
+            const newStatus = newData.playStatus.playStatus;
+            updates.push(`League status update: **${_.get(playStatusMap, newStatus, "The league has entered unrecognized status '" + newStatus + "'!")}**`);
+        }
+        else if (d.path[0] == "managerMessages" && d.item.kind == 'N') {
+            newMessages++;
+        }
+    });
+
+    updates = updates.concat(newData.managerMessages.slice(0, newMessages).map(message => "New manager message: " + message.messageText));
+
+    console.log("--- Status and messages updates");
     console.log(updates);
     return updates;
 }

@@ -27,12 +27,16 @@ export interface Game {
 }
 
 export interface MasterGameYear extends Game {
+    year: number,
     masterGameID: string,
-    sortableEstimatedReleaseDate: string,
+    minimumReleaseDate: string,
+    maximumReleaseDate: string,
+    earlyAccessReleaseDate: string,
+    internationalReleaseDate: string,
     isReleased: boolean,
     openCriticID: number,
     averagedScore: boolean,
-    eligibilitySettings: EligibilitySettings,
+    tags: string[],
     subGames: MasterGameYear[],
     boxartFileName: string,
     addedTimestamp: string,
@@ -41,7 +45,10 @@ export interface MasterGameYear extends Game {
     averageDraftPosition: number,
     percentStandardGame: number,
     percentCounterPick: number
-    // missing some
+    eligiblePercentStandardGame: number,
+    eligiblePercentCounterPick: number,
+    dateAdjustedHypeFactor: number,
+    projectedOrRealFantasyPoints: number
 }
 
 export interface PublisherGame extends Game {
@@ -53,7 +60,8 @@ export interface PublisherGame extends Game {
     simpleProjectedFantasyPoints: number,
     advancedProjectedFantasyPoints: number,
     linked: boolean,
-    manualCriticScore: boolean
+    manualCriticScore: boolean,
+    masterGame: MasterGameYear
     // missing some
 }
 
@@ -61,21 +69,79 @@ export interface Publisher {
     publisherName: string,
     playerName: string,
     games: PublisherGame[],
-    totalFantasyPoints: number
+    totalFantasyPoints: number,
+    budget: number,
+    draftPosition: number,
+    freeDroppableGames: number,
+    freeGamesDropped: number,
+    gamesReleased: number,
+    gamesWillRelease: number,
+    leagueID: string,
+    leagueName: string,
+    nextToDraft: boolean,
+    oustandingInvite: boolean,
+    publisherID: string,
+    totalProjectedPoints: number
     // missing some
 }
 
 export interface LeagueYear {
     publishers: Publisher[],
-    players: Player[]
+    players: Player[],
+    managerMessages: ManagerMessage[],
+    gamesToDraft: number,
+    counterPicks: number,
+    playStatus: PlayStatus,
+    draftSystem: string,
+    scoringSystem: string,
+    pickupSystem: string,
+    standardGames: number,
+    year: number,
+    supportedYear: SupportedYear
     // missing some
+}
+
+export interface ManagerMessage {
+    isPublic: boolean,
+    messageID: string,
+    messageText: string,
+    timestamp: Date
+}
+
+export interface PlayStatus {
+    draftFinished: boolean,
+    draftIsActive: boolean,
+    draftIsPaused: boolean,
+    draftingCounterPicks: boolean,
+    playStarted: boolean,
+    playStatus: string,
+    readyToDraft: boolean,
+    readyToSetDraftOrder: boolean,
+    startDraftErrors: string[]
+}
+
+export interface SupportedYear {
+    finished: boolean,
+    openForCreation: boolean,
+    openForPlay: boolean,
+    startDate: Date,
+    year: number
 }
 
 export interface Player {
     publisher: Publisher,
     totalFantasyPoints: number,
-    simpleProjetedFantasyPoints: number,
-    advancedProjectedFantasyPoints: number
+    simpleProjectedFantasyPoints: number,
+    advancedProjectedFantasyPoints: number,
+    user: User
+}
+
+export interface User {
+    displayName: string,
+    leagueID: string,
+    leagueName: string,
+    removable: boolean,
+    userID: string
 }
 
 export interface LeagueAction {

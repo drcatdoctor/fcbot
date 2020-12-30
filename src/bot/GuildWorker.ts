@@ -4,7 +4,7 @@ import schedule = require('node-schedule');
 import { Mutex } from 'async-mutex';
 import * as FCDiff from "./fcdifftools";
 import * as FC from "../fc/main";
-import * as Client from "../fc/Client";
+import * as OpenCritic from "../opencritic/main";
 var ranked = require('ranked');
 
 import * as Discord from 'discord.js';
@@ -13,6 +13,8 @@ import * as _ from "lodash";
 import { FCMemcache } from './FCMemcache'
 import { FCMongo } from './FCMongo'
 import { FCBot } from "./main";
+import { stringify } from "querystring";
+import { group } from "console";
 
 export interface WorkerSaveState {
     guildId: string,
@@ -23,10 +25,10 @@ export interface WorkerSaveState {
 }
 
 export class GuildWorker {
-    // set in constructor
     private guild: Discord.Guild;
     private memcache: FCMemcache;
     private fc: FC.Client;
+    private ocClient: OpenCritic.OCClient;
     private mongo: FCMongo;
     running: boolean = false;
 
@@ -44,7 +46,8 @@ export class GuildWorker {
         this.guild = guild;
         this.memcache = memcache;
         this.mongo = mongo;
-        this.fc = new Client.Client();
+        this.fc = new FC.Client();
+        this.ocClient = new OpenCritic.OCClient();
         console.log("constructing GuildWorker doing loadState");
         this.loadState();
         this.fc.on('authRefresh', this.handleFCAuthRefresh.bind(this));
@@ -84,7 +87,7 @@ export class GuildWorker {
             console.log(state);
             this.league = state.league;
             for (var name of state.channelNames) {
-                var found = <Discord.TextChannel>this.guild.channels.find(c => c.name == name && c.type == "text");
+                var found = <Discord.TextChannel>this.guild.channels.cache.find(c => c.name == name && c.type == "text");
                 if (!found) {
                     console.log(`Loaded state had channel #${name} but it wasn't found in the guild.`);
                 } else {
@@ -95,7 +98,7 @@ export class GuildWorker {
                 // assume there is some problem (there is, due to a problem on the FC server)
                 console.log("Discarding fcAuth value due to ridiculous length");
                 this.channels.forEach(ch => {
-                    ch.sendMessage("Authorization reset due to server issue. Please re-login.");
+                    ch.send("Authorization reset due to server issue. Please re-login.");
                 });
             }
             else {
@@ -155,12 +158,14 @@ export class GuildWorker {
         var strings = rankedPlayers.map(ranking => {
             const pl = ranking.item;
             const rank = ranking.rank;
-            return `**${rank}. ${pl.publisher.publisherName}** (${pl.publisher.playerName}) -- ` +
+            return `**${rank}. ${pl.publisher.publisherName}** (${pl.publisher.playerName}) - ` +
                 `**${Math.round(pl.totalFantasyPoints * 100) / 100} points**`
         })
-        const to_send = '*Score Report*\n' + strings.join('\n');
-        FCBot.logSend(channel, to_send);
-        channel.send(to_send);
+        var embed = new Discord.MessageEmbed();
+        embed.setDescription(strings.join('\n'));
+        embed.setTitle("Fantasy Critic Score Report");
+        embed.setColor("ffcc00");
+        channel.send(embed);
     }
 
     async doPublisherReport(channel: Discord.TextChannel, searchString: string) {
@@ -178,8 +183,12 @@ export class GuildWorker {
         }
         const pub = player.publisher;
 
+        var embed = new Discord.MessageEmbed();
+        embed.setTitle(pub.publisherName)
+
+
         var strings = [
-            `*Publisher Report: **${pub.publisherName}** (${pub.playerName}) - Total points: **${FCDiff.cleannum(pub.totalFantasyPoints)}***`
+            `(Player: ${pub.playerName})`
         ];
 
         strings = strings.concat( pub.games.map(game => {
@@ -187,7 +196,7 @@ export class GuildWorker {
             var points = "";
             var score = "";
             if (game.counterPick) {
-                name = "(!) " + name;
+                name = "*" + name + " (cp)*";
             }
             name = "**" + name + "**";
             if (game.fantasyPoints !== undefined && game.fantasyPoints != null) {
@@ -201,57 +210,112 @@ export class GuildWorker {
             }
             else if (!game.released) {
                 if (game.releaseDate) {
-                    return `- ${name} - scheduled release ${game.releaseDate}` + score + points;
+                    return `${name} - scheduled release ${game.releaseDate}` + score + points;
                 }
                 else {
-                    return `- ${name} - estimated release ${game.estimatedReleaseDate}` + score + points;
+                    return `${name} - estimated release ${game.estimatedReleaseDate}` + score + points;
                 }
             }
             else {
-                return `- ${name}` + score + points; 
+                return `${name}` + score + points; 
             }
         }) );
 
-        const to_send = strings.join('\n');
-        FCBot.logSend(channel, to_send);
-        channel.send(to_send);
+        strings = strings.filter(s => s != undefined && s != null && s.length > 0);
+        strings.push(`Total points: **${FCDiff.cleannum(pub.totalFantasyPoints)}**`);
+
+        embed.setDescription(strings.join('\n'));
+        embed.setColor("aaccff");
+        console.log(strings.join('\n'));
+        channel.send(embed);
     }
 
-    static infoForOne(game: FC.MasterGameYear): string {
-        var l1 = `**${game.gameName}**, a ${game.eligibilitySettings.eligibilityLevel.name} `;
+    private firstSentenceRegexp = new RegExp(/^(?:[A-Z ]+\n)*\n*([^\.\!]+[\.\!])[\s$]/, "m");
+
+    private async infoForOne(game: FC.MasterGameYear): Promise<string | Discord.MessageEmbed> {
+        var embed = new Discord.MessageEmbed();
+
+        if (game.openCriticID) {
+            var ocGame = await this.ocClient.getGame(game.openCriticID);
+
+            embed.setTitle(ocGame.name);
+            embed.setURL('https://opencritic.com/game/' + game.openCriticID.toString() + '/view');
+    
+            var companyGroups = [
+                ocGame.Companies.filter(c => c.type == "DEVELOPER").map(c => c.name).join(", "),
+                ocGame.Companies.filter(c => c.type == "PUBLISHER").map(c => c.name).join(", ")
+            ];
+            companyGroups = companyGroups.filter(group => group.length > 0);
+            const genrecompanies = 
+                `(${ocGame.Genres.map(g => g.name).join(", ")}. ${companyGroups.join("; ")}.)`;        
+
+            const tagString = game.tags.join(" / ");
+
+            var body = `*${tagString}*\n`
+
+            if (ocGame.description) {
+                const firstSentence = ocGame.description.match(this.firstSentenceRegexp);
+
+                if (firstSentence.length > 0) {
+                    body = body + firstSentence[1];
+                } else {
+                    body = body + ocGame.description;
+                }
+            } else {
+                body = body + "No description available.";
+            }
+
+
+            body = body + "\n" + genrecompanies;
+
+            embed.setDescription(body);
+
+            if (ocGame.logoScreenshot && ocGame.logoScreenshot.thumbnail) {
+                embed.setThumbnail("https:" + ocGame.logoScreenshot.thumbnail);
+            }
+            else if (ocGame.bannerScreenshot && ocGame.bannerScreenshot.thumbnail) {
+                embed.setThumbnail("https:" + ocGame.bannerScreenshot.thumbnail);
+            }
+            else if (ocGame.mastheadScreenshot && ocGame.mastheadScreenshot.thumbnail) {
+                embed.setThumbnail("https:" + ocGame.mastheadScreenshot.thumbnail);
+            }
+            console.log("  Thumbnail: " + embed.thumbnail);
+     
+            if (ocGame.numTopCriticReviews < 3) {
+                embed.addField("Critic Score", "N/A", true);
+            } else {
+                embed.addField("Critic Score", `${FCDiff.cleannum(ocGame.topCriticScore)}, from ${ocGame.numTopCriticReviews} reviews`, true);
+                embed.addField("Fantasy Points", (game.projectedOrRealFantasyPoints > 0 ? "+" : "") + FCDiff.cleannum(game.projectedOrRealFantasyPoints), true);
+            }
+
+            if (ocGame.reviewSummary.completed) {
+                embed.setFooter("\"" + ocGame.reviewSummary.summary + "\"");
+            }
+        } 
+        else {
+            embed.setTitle(game.gameName);
+            const tagString = game.tags.join(" / ");
+            embed.setDescription(`*${tagString}*\n(No OpenCritic link.)`);
+        }
+
         if (game.isReleased) {
-            l1 += "released on **" + FCDiff.cleandate(game.releaseDate) + "**";
+            embed.addField("Released", FCDiff.cleandate(game.releaseDate), true);
         } else if (game.releaseDate) {
-            l1 += "scheduled for **" + FCDiff.cleandate(game.releaseDate) + "**";
+            embed.addField("Scheduled Release", FCDiff.cleandate(game.releaseDate), true);
         } else if (game.estimatedReleaseDate) {
-            l1 += "estimated release **" + FCDiff.cleandate(game.estimatedReleaseDate) + "**";
+            embed.addField("Estimated Release", FCDiff.cleandate(game.estimatedReleaseDate), true);
         }
-        var l2s: string[] = [];
-        if (game.criticScore) {
-            l2s.push("Critic score: **" + FCDiff.cleannum(game.criticScore) + "**");
-        }
-        else if (game.projectedFantasyPoints) {
-            l2s.push("Projected points: **" + FCDiff.cleannum(game.projectedFantasyPoints) + "**");
-        }
-        /*    
-        var l3s: string[] = [];   
-        if (game.percentStandardGame !== undefined) {
-            l3s.push( `Picked ${FCDiff.cleannum(game.percentStandardGame * 100.0)}% of the time` );
-        }
-        if (game.percentCounterPick !== undefined) {
-            l3s.push( `Counterpicked ${FCDiff.cleannum(game.percentCounterPick * 100.0)}% of the time` );
-        }
-        */
-        var line = l1;
-        if (l2s) {
-            line = line + "\n" + l2s.join(' - ');
-        }
-        /*
-        if (l3s) {
-            line = line + "\n" + l3s.join("\n");
-        }
-        */
-        return line;
+
+        if (!game.isReleased) {
+            if (game.dateAdjustedHypeFactor != undefined && game.dateAdjustedHypeFactor != null) {
+                embed.addField("Hype Factor", FCDiff.cleannum(game.dateAdjustedHypeFactor));
+            }
+            if (game.averageDraftPosition != undefined && game.averageDraftPosition != null) {
+                embed.addField("Average Draft Position", FCDiff.cleannum(game.averageDraftPosition));
+            }
+        } 
+
+        return embed;
     }
 
     async checkOne(channel: Discord.TextChannel, gameSearch: string) {
@@ -263,7 +327,15 @@ export class GuildWorker {
 
         var hits = _.values(MGYdict).filter(mgy => mgy.gameName.toLowerCase().includes(search));
 
-        var result: string;
+        if (hits.length > 1) {
+            // try exact match
+            var exactHits = hits.filter(mgy => mgy.gameName.toLowerCase() == search);
+            if (exactHits.length == 1) {
+                hits = exactHits;
+            }
+        }
+
+        var result: string | Discord.MessageEmbed;
         if (hits.length > 5) {
             result = `Got ${hits.length} hits for "${gameSearch}" - be more specific.`
         }
@@ -271,13 +343,23 @@ export class GuildWorker {
             result = `Which one: ${hits.map(mgy => mgy.gameName).join(', ')}?`
         }
         else if (hits.length == 1) {
-            result = GuildWorker.infoForOne(hits[0]);
+            result = await this.infoForOne(hits[0]);
         }
         else {
             result = `No results for "${gameSearch}".`;
         }
-        FCBot.logSend(channel, result);
-        channel.send(result);
+        FCBot.logSend(channel, result.toString());
+
+        try {
+            channel.send(result);
+        } catch (e) {
+            if (e.message.includes("Missing Permissions")) {
+                channel.send("Unable to embed result -- insufficient permissions.\n" +
+                    `Server admin should go to https://discord.com/api/oauth2/authorize?client_id=${process.env.CLIENT_ID}&permissions=${FCBot.NEEDS_PERMISSIONS}&scope=bot to reauthorize.`)
+            } else {
+                throw e;
+            }
+        }
     }
 
     async startSchedule() {
@@ -292,14 +374,13 @@ export class GuildWorker {
         this.jobs["small"] =
             schedule.scheduleJob('*/3 * * * *', this.doCheck.bind(this, false, "small"));
 
-        // Bids go through Monday evenings at 8PM Eastern
-        // heroku times are in UTC, which makes this Tuesday morning at 1am.
+        // Bids go through Saturday evenings at 8PM Eastern
+        // heroku times are in UTC, which makes this Sunday morning at 1am.
         //                                       s    m    h D M W
-        this.jobs["bids"] = schedule.scheduleJob('0,30 0,1,2,4,5 1 * * 2', this.doCheck.bind(this, false, "bids"));
+        this.jobs["bids"] = schedule.scheduleJob('30 0,1,2,4,5 1 * * 0', this.doCheck.bind(this, false, "bids"));
 
-        // Dropping goes through Sunday evenings at 8PM Eastern.
-        // blah blah Monday morning at 1am.
-        this.jobs["drops"] = schedule.scheduleJob('0,30 0,1,2,4,5 1 * * 1', this.doCheck.bind(this, false, "drops"));
+        // Drops now happen at the same time.
+        this.jobs["drops"] = schedule.scheduleJob('0 0,1,2,4,5 1 * * 0', this.doCheck.bind(this, false, "drops"));
 
         _.forOwn(this.jobs, (job, jobname) =>
             console.log(`For guild "${this.guild.name}" (${this.guild.id}): the first`, jobname, "job will run at", job.nextInvocation().toString())
@@ -351,6 +432,7 @@ export class GuildWorker {
         var updates: string[] = [];
         if (this.lastLeagueYear) {
             updates = FCDiff.diffLeagueYear(this.lastLeagueYear, newLeagueYear)
+            updates = updates.concat(FCDiff.diffLeagueYearStatusAndMessages(this.lastLeagueYear, newLeagueYear));
         } else {
             console.log("storing first result.")
         }
@@ -428,7 +510,7 @@ export class GuildWorker {
 
             var updates: string[] = [];
 
-            if (doMasterCheck) {
+            if (doMasterCheck && this.league) {
                 var newMGY = await this.getMGY();
                 updateLength = updates.push(... this.updatesForMasterGameYear(newMGY));
                 console.log("Currently have", updateLength, "updates");
