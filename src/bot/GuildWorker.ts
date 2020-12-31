@@ -146,21 +146,44 @@ export class GuildWorker {
         }
     }
 
+    private playStatusMap = {
+        "Drafting": "Draft in Progress",
+        "DraftPaused": "Draft in Progress (paused)",
+        "DraftFinal": "League in Play (Draft Complete)",
+        "NotStartedDraft": "League is in pre-draft signup mode"
+    };
+    
     async doScoreReport(channel: Discord.TextChannel) {
         if (!this.league) {
             throw new Error("Can't do score without league set. (Check !fcadminhelp for commands.)");
         }
 
         const leagueYear = await this.getLeagueYear();
+
+        const leagueStatus = _.get(this.playStatusMap, leagueYear.playStatus.playStatus, `Unrecognized status: ${leagueYear.playStatus.playStatus}`);
+
         const rankedPlayers: { rank: number, item: FC.Player }[] =
             ranked.ranking(leagueYear.players, (pl: FC.Player) => pl.totalFantasyPoints);
 
-        var strings = rankedPlayers.map(ranking => {
+        var strings: string[] = [];
+        
+        if (leagueYear.playStatus.playStatus != "DraftFinal") {
+            strings.push(
+                "*Note: " + leagueStatus + "*"
+            );
+        }
+
+        strings = strings.concat(rankedPlayers.map(ranking => {
             const pl = ranking.item;
             const rank = ranking.rank;
-            return `**${rank}. ${pl.publisher.publisherName}** (${pl.publisher.playerName}) - ` +
-                `**${Math.round(pl.totalFantasyPoints * 100) / 100} points**`
-        })
+            if (pl.publisher == null) {
+                return `.. No publisher defined (${pl.user.displayName}) - n/a points`;
+            }
+            else {
+                return `**${rank}. ${pl.publisher.publisherName}** (${pl.publisher.playerName}) - ` +
+                    `**${Math.round(pl.totalFantasyPoints * 100) / 100} points**`;
+            }
+        }));
         var embed = new Discord.MessageEmbed();
         embed.setDescription(strings.join('\n'));
         embed.setTitle("Fantasy Critic Score Report");
@@ -175,21 +198,27 @@ export class GuildWorker {
 
         const leagueYear = await this.getLeagueYear();
         const player = _.find(leagueYear.players, (pl: FC.Player) => 
-            pl.publisher.publisherName.toLowerCase().includes(searchString.toLowerCase())
+            pl.publisher != null && pl.publisher.publisherName.toLowerCase().includes(searchString.toLowerCase())
         );
 
         if (!player) {
             throw new Error(`No publisher matching '${searchString}'. (Use !fcscore for a list.)`)
         }
+        const leagueStatus = _.get(this.playStatusMap, leagueYear.playStatus.playStatus, `Unrecognized status: ${leagueYear.playStatus.playStatus}`);
         const pub = player.publisher;
 
         var embed = new Discord.MessageEmbed();
         embed.setTitle(pub.publisherName)
 
-
         var strings = [
             `(Player: ${pub.playerName})`
         ];
+
+        if (leagueYear.playStatus.playStatus != "DraftFinal") {
+            strings.push(
+                "*Note: " + leagueStatus + "*"
+            );
+        }
 
         strings = strings.concat( pub.games.map(game => {
             var name = game.gameName;
@@ -413,7 +442,7 @@ export class GuildWorker {
                 );
         }
 
-        if (!this.lastMasterGameYear)
+        if (!this.lastMasterGameYear && this.league && this.league.year != undefined && this.league.year != null)
             this.lastMasterGameYear = await this.memcache.getLongLived(
                 FCMemcache.masterGameYearKey(this.league.year)
             );
