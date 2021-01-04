@@ -124,8 +124,9 @@ export class FCBot {
             }
 
             if (!worker.hasLeague()) {
-                this.send(channel, "Updates will not be specific to a league (use !fclogin for private leagues* or !fcleague for public leagues)");
-                this.send(channel, "(* note - !fclogin requires you to put your password in the channel so you probably shouldn't use it. Wait for fcbot updates... soon?)");
+                this.send(channel, "Please register your league first. Use !fclogin for private leagues* or !fcleague for public leagues.");
+                this.send(channel, "(* note - !fclogin requires you to put your password in the channel so you may want to do it in a private channel and/or delete your message after you do it. (Sorry, this will be changed someday.)");
+                return;
             }
             
             try {
@@ -205,6 +206,7 @@ export class FCBot {
         case "!fclogin":
             if (args.length != 4) {
                 this.send(channel, "Usage: !fclogin <email> <password> <leagueId> <year>");
+                return;
             }
 
             await worker.doFCLogin(args[0], args[1]);

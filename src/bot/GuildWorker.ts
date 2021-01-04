@@ -22,7 +22,7 @@ export interface WorkerSaveState {
     league: FC.League,
     channelNames: string[],
     running: boolean
-}
+};
 
 export class GuildWorker {
     private guild: Discord.Guild;
@@ -348,6 +348,9 @@ export class GuildWorker {
     }
 
     async checkOne(channel: Discord.TextChannel, gameSearch: string) {
+        if (!this.league) {
+            throw new Error("Can't check a game without a league set. (Check !fcadminhelp for commands.)");
+        }
         var MGYdict = this.lastMasterGameYear;
         if (!MGYdict) {
             MGYdict = await this.getMGY();
@@ -403,13 +406,10 @@ export class GuildWorker {
         this.jobs["small"] =
             schedule.scheduleJob('*/3 * * * *', this.doCheck.bind(this, false, "small"));
 
-        // Bids go through Saturday evenings at 8PM Eastern
+        // Bids and drops go through Saturday evenings at 8PM Eastern
         // heroku times are in UTC, which makes this Sunday morning at 1am.
-        //                                       s    m    h D M W
-        this.jobs["bids"] = schedule.scheduleJob('30 0,1,2,4,5 1 * * 0', this.doCheck.bind(this, false, "bids"));
-
-        // Drops now happen at the same time.
-        this.jobs["drops"] = schedule.scheduleJob('0 0,1,2,4,5 1 * * 0', this.doCheck.bind(this, false, "drops"));
+        //                                                s    m      h D M W
+        this.jobs["bidsAndDrops"] = schedule.scheduleJob('0 0,1,2,4,5 1 * * 0', this.doCheck.bind(this, false, "bidsAndDrops"));
 
         _.forOwn(this.jobs, (job, jobname) =>
             console.log(`For guild "${this.guild.name}" (${this.guild.id}): the first`, jobname, "job will run at", job.nextInvocation().toString())
@@ -431,29 +431,30 @@ export class GuildWorker {
     }
 
     private async checkForMemcache() {
-        if (this.league) {
-            if (!this.lastLeagueYear)
-                this.lastLeagueYear = await this.memcache.getLongLived(
-                    FCMemcache.leagueYearKey(this.league)
-                );
-            if (!this.lastLeagueActions)
-                this.lastLeagueActions = await this.memcache.getLongLived(
-                    FCMemcache.leagueActionsKey(this.league)
-                );
+        if (!this.league) {
+            return;
         }
+        if (!this.lastLeagueYear)
+            this.lastLeagueYear = await this.memcache.getLongLived(
+                FCMemcache.leagueYearKey(this.league)
+            );
+        if (!this.lastLeagueActions)
+            this.lastLeagueActions = await this.memcache.getLongLived(
+                FCMemcache.leagueActionsKey(this.league)
+            );
 
-        if (!this.lastMasterGameYear && this.league && this.league.year != undefined && this.league.year != null)
+        if (!this.lastMasterGameYear && this.league.year != undefined && this.league.year != null)
             this.lastMasterGameYear = await this.memcache.getLongLived(
                 FCMemcache.masterGameYearKey(this.league.year)
             );
     }
 
     private async recordInMemcache() {
-        if (this.league) {
-            this.memcache.setLongLived(FCMemcache.leagueYearKey(this.league), this.lastLeagueYear);
-            this.memcache.setLongLived(FCMemcache.leagueActionsKey(this.league), this.lastLeagueActions);
+        if (!this.league) {
+            return;
         }
-
+        this.memcache.setLongLived(FCMemcache.leagueYearKey(this.league), this.lastLeagueYear);
+        this.memcache.setLongLived(FCMemcache.leagueActionsKey(this.league), this.lastLeagueActions);
         this.memcache.setLongLived(FCMemcache.masterGameYearKey(this.league.year), this.lastMasterGameYear);
     }
 
@@ -524,6 +525,10 @@ export class GuildWorker {
     }
 
     private async doCheck(doMasterCheck: boolean, jobtype: string) {
+        if (!this.league) {
+            console.log("No league, skipping check.");
+            return;
+        }
         if (this.jobMutex.isLocked()) {
             console.log("Skipping", jobtype, "check due to job in progress.");
             return;
@@ -539,12 +544,12 @@ export class GuildWorker {
 
             var updates: string[] = [];
 
-            if (doMasterCheck && this.league) {
+            if (doMasterCheck) {
                 var newMGY = await this.getMGY();
                 updateLength = updates.push(... this.updatesForMasterGameYear(newMGY));
                 console.log("Currently have", updateLength, "updates");
             }
-            else if (this.league) {
+            else {
                 var newLeagueYear = await this.getLeagueYear();
                 var updateLength = updates.push(... this.updatesForLeagueYear(newLeagueYear));
                 console.log("Currently have", updateLength, "updates");
