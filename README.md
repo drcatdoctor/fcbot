@@ -2,7 +2,7 @@
 
 Hello and welcome to fcbot!
 
-I didn't know if this would work out or not so there's not much documentation.
+I didn't know if this would work out or not so there's not that much documentation, but here's what I got.
 
 fcbot is a bot for https://www.fantasycritic.games/ that will show you:
 * Any changes to master games (new release dates, new games added, new critic scores)
@@ -14,7 +14,6 @@ See below on how to use it.
 
 ## Table of contents
 - Using fcbot
-  - [Setup without league updates](#setup-without-league-updates)
   - [Setup with a public league](#setup-with-a-public-league)
   - [Setup with a private league](#setup-with-a-public-league)
 - Commands
@@ -31,22 +30,6 @@ https://discord.com/api/oauth2/authorize?client_id=671814513967890459&permission
 
 Then, you'll have to set it up.
 
-### Setup without league updates
-
-In ANY channel in your server that Fantasy Critic Bot is in:
-```
-    !fcadd <name of a channel you want updates to go to>
-    !fcstart
-```
-Example:
-```
-    !fcadd fantasy-critic
-    !fcstart
-```
-
-That's it!
-
-You can !fcadd multiple channels if you want.
 
 ### Setup with a public league
 
@@ -111,13 +94,20 @@ https://www.fantasycritic.games/league/YOUR-LEAGUE-ID-HERE/YEAR
  * `!fcstatus`: List added channels, whether updates are active, etc.
  * `!fcadminhelp`: Show admin commands.
  * `!fcyear <league year>`: Switch the bot to track the same league, but with a different year. Happy New Year!
+ * `!fcfreq <time description or just the word 'default'>`: 
 
 ## FAQ
 
 ### Why does it sometimes report news twice?
 
-It's an intermittent bug, it will go away. I will fix it some day. I think it's something to do with memcache.
+It's an intermittent bug, it will go away. I would like to fix it one day but it doesn't have an obvious solution.
+I think it's something to do with memcache.
 
+### Do I need to register FCBot to follow a league to use it?
+
+For now, yes. The Master Game List is different per year, and so FCBot uses your league year to figure out what 
+news to give you. If you'd really really like to use FCBot without linking it to a league, you can PM me and 
+will try to find some time to add that back in as an option. Currently it seems to not be a common use case.
 
 ### It's broken aahhh
 
