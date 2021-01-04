@@ -66,6 +66,8 @@ export interface PublisherGame extends Game {
 }
 
 export interface Publisher {
+    autoDraft: boolean,
+    averageCriticScore?: number,
     publisherName: string,
     playerName: string,
     games: PublisherGame[],
@@ -80,8 +82,10 @@ export interface Publisher {
     leagueName: string,
     nextToDraft: boolean,
     oustandingInvite: boolean,
+    publicLeague: boolean,
     publisherID: string,
     totalProjectedPoints: number
+    year: number
     // missing some
 }
 
@@ -133,7 +137,8 @@ export interface Player {
     totalFantasyPoints: number,
     simpleProjectedFantasyPoints: number,
     advancedProjectedFantasyPoints: number,
-    user: User
+    user: User,
+    previousYearWinner: boolean
 }
 
 export interface User {

@@ -176,11 +176,15 @@ export class GuildWorker {
         strings = strings.concat(rankedPlayers.map(ranking => {
             const pl = ranking.item;
             const rank = ranking.rank;
+            var playerNameString = pl.user.displayName;
+            if (pl.previousYearWinner) {
+                playerNameString = playerNameString + "👑";
+            }
             if (pl.publisher == null) {
-                return `.. No publisher defined (${pl.user.displayName}) - n/a points`;
+                return `.. No publisher defined (${playerNameString}) - n/a points`;
             }
             else {
-                return `**${rank}. ${pl.publisher.publisherName}** (${pl.publisher.playerName}) - ` +
+                return `**${rank}. ${pl.publisher.publisherName}** (${playerNameString}) - ` +
                     `**${Math.round(pl.totalFantasyPoints * 100) / 100} points**`;
             }
         }));
