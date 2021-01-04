@@ -2,6 +2,7 @@ import _ = require("lodash");
 import rp = require('request-promise');
 import { EventEmitter } from "events";
 import { League, LeagueYear, LeagueAction, MasterGameYear } from "./main";
+import { stringify } from "querystring";
 
 const request_options = {
     headers: {
@@ -12,16 +13,24 @@ const request_options = {
 };
 
 export class Client extends EventEmitter {
-    private readonly BASE_URL = "https://www.fantasycritic.games/api";
-    private readonly PATH_GET_LEAGUE_YEAR = '/League/GetLeagueYear';
-    private readonly PATH_GET_LEAGUE_ACTIONS = '/League/GetLeagueActions';
-    private readonly PATH_GET_MASTER_GAME_YEAR = '/game/MasterGameYear';
-    private readonly PATH_POST_LOGIN = '/account/login';
-    private readonly PATH_POST_REFRESH = '/token/refresh';
+    static readonly SITE_URL = "https://www.fantasycritic.games";
+
+    private static readonly BASE_API_URL = Client.SITE_URL + "/api";
+    private static readonly PATH_GET_LEAGUE_YEAR = '/League/GetLeagueYear';
+    private static readonly PATH_GET_LEAGUE_ACTIONS = '/League/GetLeagueActions';
+    private static readonly PATH_GET_MASTER_GAME_YEAR = '/game/MasterGameYear';
+    private static readonly PATH_POST_LOGIN = '/account/login';
+    private static readonly PATH_POST_REFRESH = '/token/refresh';
+
     auth: {
         token: string;
         refreshToken: string;
     };
+
+    static leagueUrl(leagueID: string, year: number) {
+        return Client.SITE_URL + "/league/" + leagueID + "/" + year.toString();
+    }
+
     async login(emailAddress: string, password: string) {
         const params = {
             emailAddress: emailAddress,
@@ -29,7 +38,7 @@ export class Client extends EventEmitter {
         };
         console.log("Logging in to FC");
         const jsonbody = await rp.post(_.defaults({
-            url: this.BASE_URL + this.PATH_POST_LOGIN,
+            url: Client.BASE_API_URL + Client.PATH_POST_LOGIN,
             body: params,
             simple: true
         }, request_options));
@@ -46,7 +55,7 @@ export class Client extends EventEmitter {
             refreshToken: this.auth.refreshToken
         };
         const jsonbody = await rp.post(_.defaults({
-            url: this.BASE_URL + this.PATH_POST_REFRESH,
+            url: Client.BASE_API_URL + Client.PATH_POST_REFRESH,
             body: params,
             simple: true
         }, request_options));
@@ -57,7 +66,7 @@ export class Client extends EventEmitter {
         var self = this; // needed for functions because typescript is insane
         if (this.auth) {
             const getPromise = rp.get(_.defaults({
-                url: this.BASE_URL + path,
+                url: Client.BASE_API_URL + path,
                 qs: queryStringParams,
                 simple: false,
                 resolveWithFullResponse: true,
@@ -81,7 +90,7 @@ export class Client extends EventEmitter {
         else {
             // try it?
             const getPromise = rp.get(_.defaults({
-                url: this.BASE_URL + path,
+                url: Client.BASE_API_URL + path,
                 qs: queryStringParams,
                 simple: false,
                 resolveWithFullResponse: true,
@@ -100,18 +109,18 @@ export class Client extends EventEmitter {
         }
     }
     async getLeagueYear(league: League): Promise<LeagueYear> {
-        return this.get(this.PATH_GET_LEAGUE_YEAR, {
+        return this.get(Client.PATH_GET_LEAGUE_YEAR, {
             leagueID: league.id,
             year: league.year
         });
     }
     async getLeagueActions(league: League): Promise<LeagueAction[]> {
-        return this.get(this.PATH_GET_LEAGUE_ACTIONS, {
+        return this.get(Client.PATH_GET_LEAGUE_ACTIONS, {
             leagueID: league.id,
             year: league.year
         });
     }
     async getMasterGameYear(year: number): Promise<MasterGameYear[]> {
-        return this.get(this.PATH_GET_MASTER_GAME_YEAR + "/" + String(year));
+        return this.get(Client.PATH_GET_MASTER_GAME_YEAR + "/" + String(year));
     }
 }

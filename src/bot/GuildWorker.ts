@@ -184,9 +184,12 @@ export class GuildWorker {
                     `**${Math.round(pl.totalFantasyPoints * 100) / 100} points**`;
             }
         }));
-        var embed = new Discord.MessageEmbed();
+        const embed = new Discord.MessageEmbed();
         embed.setDescription(strings.join('\n'));
-        embed.setTitle("Fantasy Critic Score Report");
+
+        const user1 = leagueYear.players[0].user;
+        embed.setTitle(user1.leagueName);
+        embed.setURL(FC.Client.leagueUrl(this.league.id, this.league.year));
         embed.setColor("ffcc00");
         channel.send(embed);
     }
