@@ -228,15 +228,18 @@ export function diffLeagueYear(oldData: FC.LeagueYear, newData: FC.LeagueYear): 
     }
     let updates: string[] = [];
     
-    const newRanks = makeRanks(newData.publishers, 'totalFantasyPoints');
-    const oldRanks = makeRanks(oldData.publishers, 'totalFantasyPoints');
+    const newPublishers: FC.Publisher[] = newData.publishers || [];
+    const oldPublishers: FC.Publisher[] = oldData.publishers || [];
+    const sameLength = newPublishers.length == oldPublishers.length;
+    const newRanks = makeRanks(newPublishers, 'totalFantasyPoints');
+    const oldRanks = makeRanks(oldPublishers, 'totalFantasyPoints');
 
     difflist.forEach(function (d: any) {
         console.log(d);
-        if (d.path[0] == "publishers" && d.path.length > 2) {
+        if (d.path[0] == "publishers" && d.path.length > 2 && sameLength) {
             const pubindex = d.path[1];
-            const newpub = newData.publishers[pubindex];
-            const oldpub = oldData.publishers[pubindex];
+            const newpub = newPublishers[pubindex];
+            const oldpub = oldPublishers[pubindex];
             if (d.path[2] == 'games') {
                 updates = _.union(updates, diffPublisherGames(oldpub, newpub, d));
             }
@@ -260,8 +263,8 @@ export function diffLeagueYear(oldData: FC.LeagueYear, newData: FC.LeagueYear): 
                 }
             }
         }
-        else if (d.path[0] == 'publishers' && d.path.length == 1 && d.kind == 'N') {
-            const newpub: FC.Publisher = d.rhs;
+        else if (d.path[0] == 'publishers' && d.path.length == 1 && d.kind == 'A' && d.item && d.item.kind == 'N') {
+            const newpub: FC.Publisher = d.item.rhs;
             updates.push(`New publisher added: **${newpub.publisherName}** (Player: ${newpub.playerName})`)
         }
     });
