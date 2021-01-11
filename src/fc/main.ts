@@ -156,3 +156,19 @@ export interface LeagueAction {
     description: string,
     managerAction: boolean
 }
+
+export interface LeagueUpcomingGame {
+    counterPickPublisherID: string,
+    counterPickPublisherName: string,
+    estimatedReleaseDate: string,
+    gameName: string,
+    leagueID: string,
+    leagueName: string,
+    masterGame: MasterGameYear,
+    masterGameID: string,
+    maximumReleaseDate: Date,
+    publisherID: string,
+    publisherName: string,
+    releaseDate: Date,
+    year: number
+}

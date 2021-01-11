@@ -159,6 +159,7 @@ export class GuildWorker {
         }
 
         const leagueYear = await this.getLeagueYear();
+        const leagueUpcoming = await this.getLeagueUpcoming();
 
         const leagueStatus = _.get(this.playStatusMap, leagueYear.playStatus.playStatus, `Unrecognized status: ${leagueYear.playStatus.playStatus}`);
 
@@ -195,7 +196,33 @@ export class GuildWorker {
         embed.setTitle(user1.leagueName);
         embed.setURL(FC.Client.leagueUrl(this.league.id, this.league.year));
         embed.setColor("ffcc00");
+
+        if (leagueUpcoming.length > 0) {
+            const rankedUpcoming: { rank: number, item: FC.LeagueUpcomingGame }[] =
+            ranked.ranking(leagueUpcoming, (lug: FC.LeagueUpcomingGame) => lug.maximumReleaseDate, { reverse: true });
+            const firstUpcoming = _.filter(rankedUpcoming, ranking => ranking.rank == 1);
+
+            const gameDescs = GuildWorker.joinWithAnd(
+                _.map(firstUpcoming, ranking => `${ranking.item.gameName} (for ${ranking.item.publisherName})`)
+            );
+            const releaseWord = (firstUpcoming.length > 1) ? "releases" : "release";
+
+            embed.setFooter(
+                `Next expected ${releaseWord}: ${gameDescs} on ${firstUpcoming[0].item.estimatedReleaseDate}`
+            );       
+        }
+
         channel.send(embed);
+    }
+
+    private static joinWithAnd(arr: string[]) {
+        if (arr.length == 0) {
+            return '';
+        }
+        if (arr.length == 1) {
+            return arr[0];
+        }
+        return arr.slice(0, -1).join(', ') + ' and ' + arr[arr.length - 1];
     }
 
     async doPublisherReport(channel: Discord.TextChannel, searchString: string) {
@@ -509,6 +536,10 @@ export class GuildWorker {
             this.memcache.setLive(memKey, newLeagueYear);
         }
         return newLeagueYear;
+    }
+
+    private async getLeagueUpcoming(): Promise<FC.LeagueUpcomingGame[]> {
+        return this.fc.getLeagueUpcoming(this.league);
     }
 
     private async getLeagueActions(): Promise<FC.LeagueAction[]> {

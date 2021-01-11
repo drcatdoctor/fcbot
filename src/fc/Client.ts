@@ -1,7 +1,7 @@
 import _ = require("lodash");
 import rp = require('request-promise');
 import { EventEmitter } from "events";
-import { League, LeagueYear, LeagueAction, MasterGameYear } from "./main";
+import { League, LeagueYear, LeagueAction, MasterGameYear, LeagueUpcomingGame } from "./main";
 import { stringify } from "querystring";
 
 const request_options = {
@@ -17,6 +17,7 @@ export class Client extends EventEmitter {
 
     private static readonly BASE_API_URL = Client.SITE_URL + "/api";
     private static readonly PATH_GET_LEAGUE_YEAR = '/League/GetLeagueYear';
+    private static readonly PATH_GET_LEAGUE_UPCOMING = '/League/LeagueUpcomingGames';
     private static readonly PATH_GET_LEAGUE_ACTIONS = '/League/GetLeagueActions';
     private static readonly PATH_GET_MASTER_GAME_YEAR = '/game/MasterGameYear';
     private static readonly PATH_POST_LOGIN = '/account/login';
@@ -110,6 +111,12 @@ export class Client extends EventEmitter {
     }
     async getLeagueYear(league: League): Promise<LeagueYear> {
         return this.get(Client.PATH_GET_LEAGUE_YEAR, {
+            leagueID: league.id,
+            year: league.year
+        });
+    }
+    async getLeagueUpcoming(league: League): Promise<LeagueUpcomingGame[]> {
+        return this.get(Client.PATH_GET_LEAGUE_UPCOMING, {
             leagueID: league.id,
             year: league.year
         });
