@@ -2,6 +2,7 @@ import * as deepdiff from 'deep-diff';
 import * as FC from "../fc/main";
 import * as _ from "lodash";
 var ranked = require('ranked');
+var dateFormat = require("dateformat");
 
 const ordinal = require('ordinal');
 
@@ -35,15 +36,15 @@ function filterAnythingButStatusAndMessages(path: string[], key: string): boolea
 }
 
 
-const DATE_REGEXP = new RegExp(/(\d\d\d\d-\d\d-\d\d)T\d\d:\d\d:\d\d/);
+const DATE_REGEXP = new RegExp(/\d\d\d\d-\d\d-\d\dT\d\d:\d\d:\d\d/);
 
 export function cleandate(s: string) {
     if (!s)
         return s;
     const results = DATE_REGEXP.exec(s);
     if (results) {
-        const justTheDate = results[1];
-        return justTheDate;
+        const d = new Date(s);
+        return dateFormat(d, "DDDD, mmmm d");
     }
     else {
         return s;

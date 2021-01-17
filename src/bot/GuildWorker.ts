@@ -273,10 +273,10 @@ export class GuildWorker {
             }
             else if (!game.released) {
                 if (game.releaseDate) {
-                    return `${name} - scheduled release ${game.releaseDate}` + score + points;
+                    return `${name} - ${FCDiff.cleandate(game.releaseDate)}` + score + points;
                 }
                 else {
-                    return `${name} - estimated release ${game.estimatedReleaseDate}` + score + points;
+                    return `${name} - ${FCDiff.cleandate(game.estimatedReleaseDate)} (est.)` + score + points;
                 }
             }
             else {
