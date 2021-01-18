@@ -225,6 +225,32 @@ export class GuildWorker {
         return arr.slice(0, -1).join(', ') + ' and ' + arr[arr.length - 1];
     }
 
+    async doUpcoming(channel: Discord.TextChannel) {
+        if (!this.league) {
+            throw new Error("Can't do upcoming games without league set. (Check !fcadminhelp for commands.)");
+        }
+
+        const leagueUpcoming = await this.getLeagueUpcoming();
+
+        if (leagueUpcoming.length == 0) {
+            return "No upcoming games available.";
+        }
+
+        const rankedUpcoming: { rank: number, item: FC.LeagueUpcomingGame }[] =
+            ranked.ranking(leagueUpcoming, (lug: FC.LeagueUpcomingGame) => lug.maximumReleaseDate, { reverse: true });
+        const strings = rankedUpcoming.map(ranking =>
+            `**${ranking.item.gameName}** (${ranking.item.publisherName}) - ${FCDiff.cleandate(ranking.item.estimatedReleaseDate)}`
+        );
+
+        const embed = new Discord.MessageEmbed();
+        embed.setDescription(strings.join('\n'));
+
+        embed.setTitle("Upcoming Games");
+        embed.setColor("e8853a");
+
+        channel.send(embed);
+    }
+
     async doPublisherReport(channel: Discord.TextChannel, searchString: string) {
         if (!this.league) {
             throw new Error("Can't do publisher report without league set. (Check !fcadminhelp for commands.)");

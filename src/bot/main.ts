@@ -231,6 +231,15 @@ export class FCBot {
             }
             break;
 
+        case "!fcup":
+            try {
+                await worker.doUpcoming(channel);
+            }
+            catch (err) {
+                this.send(channel, "Error: " + err.message);
+            }
+            break;
+
         case "!fcpub":
             if (args.length == 0) {
                 this.send(channel, "Usage: !fcpub <publisher name (or part of it)>");
@@ -263,7 +272,7 @@ export class FCBot {
             break;
 
         case "!fchelp":
-            this.send(channel, "Commands: !fccheck <game name to search>, !fcpub <publisher name>, !fcscore. Also see !fcadminhelp");
+            this.send(channel, "Commands: !fccheck <game name to search>, !fcpub <publisher name>, !fcscore, !fcup. Also see !fcadminhelp");
             break;
         }
     }
