@@ -208,7 +208,7 @@ export class GuildWorker {
             const releaseWord = (firstUpcoming.length > 1) ? "releases" : "release";
 
             embed.setFooter(
-                `Next expected ${releaseWord}: ${gameDescs} on ${firstUpcoming[0].item.estimatedReleaseDate}`
+                `Next expected ${releaseWord}: ${gameDescs}, by ${FCDiff.cleandate(firstUpcoming[0].item.estimatedReleaseDate)}`
             );       
         }
 

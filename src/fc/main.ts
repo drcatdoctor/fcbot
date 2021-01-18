@@ -169,6 +169,6 @@ export interface LeagueUpcomingGame {
     maximumReleaseDate: Date,
     publisherID: string,
     publisherName: string,
-    releaseDate: Date,
+    releaseDate: string,
     year: number
 }

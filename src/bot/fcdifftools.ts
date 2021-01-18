@@ -36,15 +36,43 @@ function filterAnythingButStatusAndMessages(path: string[], key: string): boolea
 }
 
 
-const DATE_REGEXP = new RegExp(/\d\d\d\d-\d\d-\d\dT\d\d:\d\d:\d\d/);
+const DATETIME_REGEXP = new RegExp(/\d\d\d\d\-\d\d\-\d\dT\d\d:\d\d:\d\d/);
+const DATEONLY_REGEXP = new RegExp(/\d\d\d\d\-\d\d\-\d\d/);
+const WEEK_IN_MS = 604_800_000;
+
+export function cleanactualdate(futureDate: Date) {
+    const now = new Date();
+    const time_remaining_ms = futureDate.getTime() - now.getTime();
+    const is_today = (
+        futureDate.getFullYear() == now.getFullYear() &&
+        futureDate.getMonth() == now.getMonth() &&
+        futureDate.getDate() == now.getDate()
+    )
+    if (is_today) {
+        return dateFormat(futureDate, "DDDD, mmmm dS");
+    } 
+    else if (time_remaining_ms < 0) {
+        return dateFormat(futureDate, "mmmm dS");
+    }
+    else if (time_remaining_ms < WEEK_IN_MS) {
+        return dateFormat(futureDate, "DDDD, mmmm dS");
+    }
+    else {
+        return dateFormat(futureDate, "mmmm dS");
+    }
+}
 
 export function cleandate(s: string) {
     if (!s)
         return s;
-    const results = DATE_REGEXP.exec(s);
-    if (results) {
+    if (DATETIME_REGEXP.exec(s)) {
         const d = new Date(s);
-        return dateFormat(d, "DDDD, mmmm d");
+        return cleanactualdate(d);
+    }
+    else if (DATEONLY_REGEXP.exec(s)) {
+        const nums: number[] = _.map(s.split("-"), x => Number.parseInt(x));
+        const d = new Date(nums[0], nums[1]-1, nums[2]);
+        return cleanactualdate(d);
     }
     else {
         return s;
