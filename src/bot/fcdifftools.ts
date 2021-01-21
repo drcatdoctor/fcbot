@@ -1,10 +1,16 @@
+import { LocalDateTime, ZonedDateTime, ZoneId, ChronoUnit, DateTimeFormatter } from '@js-joda/core'
+import '@js-joda/timezone'
+import { Locale } from '@js-joda/locale_en-us'
 import * as deepdiff from 'deep-diff';
 import * as FC from "../fc/main";
 import * as _ from "lodash";
 var ranked = require('ranked');
-var dateFormat = require("dateformat");
 
 const ordinal = require('ordinal');
+
+const FANTASY_CRITIC_TZ = ZoneId.of("America/New_York");
+const NO_DOW_FORMAT = DateTimeFormatter.ofPattern("MMMM d").withLocale(Locale.US);
+const DOW_FORMAT = DateTimeFormatter.ofPattern("EEEE, MMMM d").withLocale(Locale.US);
 
 const NUMERICAL_DIFF_REPORT_THRESHOLD = 2.0;
 
@@ -38,27 +44,25 @@ function filterAnythingButStatusAndMessages(path: string[], key: string): boolea
 
 const DATETIME_REGEXP = new RegExp(/\d\d\d\d\-\d\d\-\d\dT\d\d:\d\d:\d\d/);
 const DATEONLY_REGEXP = new RegExp(/\d\d\d\d\-\d\d\-\d\d/);
-const WEEK_IN_MS = 604_800_000;
 
-export function cleanactualdate(futureDate: Date) {
-    const now = new Date();
-    const time_remaining_ms = futureDate.getTime() - now.getTime();
-    const is_today = (
-        futureDate.getFullYear() == now.getFullYear() &&
-        futureDate.getMonth() == now.getMonth() &&
-        futureDate.getDate() == now.getDate()
-    )
-    if (is_today) {
-        return dateFormat(futureDate, "DDDD, mmmm dS");
-    } 
-    else if (time_remaining_ms < 0) {
-        return dateFormat(futureDate, "mmmm dS");
+export function cleanactualdate(futureDate: ZonedDateTime) {
+    const now = ZonedDateTime.now();
+    const days_away = now.until(futureDate, ChronoUnit.DAYS);
+
+    switch (days_away) {
+        case -1:
+            return "Yesterday, " + futureDate.format(NO_DOW_FORMAT);
+        case 0:
+            return "Today, " + futureDate.format(NO_DOW_FORMAT);
+        case 1:
+            return "Tomorrow, " + futureDate.format(NO_DOW_FORMAT);        
     }
-    else if (time_remaining_ms < WEEK_IN_MS) {
-        return dateFormat(futureDate, "DDD, mmmm dS");
+    
+    if (days_away >= 2 && days_away <= 7) {
+        return futureDate.format(DOW_FORMAT);
     }
     else {
-        return dateFormat(futureDate, "mmmm dS");
+        return futureDate.format(NO_DOW_FORMAT);
     }
 }
 
@@ -66,12 +70,12 @@ export function cleandate(s: string) {
     if (!s)
         return s;
     if (DATETIME_REGEXP.exec(s)) {
-        const d = new Date(s);
+        const d = ZonedDateTime.of(LocalDateTime.parse(s), FANTASY_CRITIC_TZ);
         return cleanactualdate(d);
     }
     else if (DATEONLY_REGEXP.exec(s)) {
         const nums: number[] = _.map(s.split("-"), x => Number.parseInt(x));
-        const d = new Date(nums[0], nums[1]-1, nums[2]);
+        const d = ZonedDateTime.of(LocalDateTime.of(nums[0], nums[1], nums[2]), FANTASY_CRITIC_TZ);
         return cleanactualdate(d);
     }
     else {

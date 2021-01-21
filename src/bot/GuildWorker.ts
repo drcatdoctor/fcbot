@@ -198,8 +198,9 @@ export class GuildWorker {
         embed.setColor("ffcc00");
 
         if (leagueUpcoming.length > 0) {
+            const filteredUpcoming = _.filter(leagueUpcoming, g => !g.masterGame.isReleased);
             const rankedUpcoming: { rank: number, item: FC.LeagueUpcomingGame }[] =
-            ranked.ranking(leagueUpcoming, (lug: FC.LeagueUpcomingGame) => lug.maximumReleaseDate, { reverse: true });
+                ranked.ranking(filteredUpcoming, (lug: FC.LeagueUpcomingGame) => lug.maximumReleaseDate, { reverse: true });
             const firstUpcoming = _.filter(rankedUpcoming, ranking => ranking.rank == 1);
 
             const gameDescs = GuildWorker.joinWithAnd(
@@ -208,7 +209,7 @@ export class GuildWorker {
             const releaseWord = (firstUpcoming.length > 1) ? "releases" : "release";
 
             embed.setFooter(
-                `Next expected ${releaseWord}: ${gameDescs}, by ${FCDiff.cleandate(firstUpcoming[0].item.estimatedReleaseDate)}`
+                `Next expected ${releaseWord}: ${gameDescs}, ${FCDiff.cleandate(firstUpcoming[0].item.estimatedReleaseDate)}`
             );       
         }
 
@@ -230,11 +231,13 @@ export class GuildWorker {
             throw new Error("Can't do upcoming games without league set. (Check !fcadminhelp for commands.)");
         }
 
-        const leagueUpcoming = await this.getLeagueUpcoming();
+        var leagueUpcoming = await this.getLeagueUpcoming();
 
         if (leagueUpcoming.length == 0) {
             return "No upcoming games available.";
         }
+
+        leagueUpcoming = _.filter(leagueUpcoming, g => !g.masterGame.isReleased);
 
         const rankedUpcoming: { rank: number, item: FC.LeagueUpcomingGame }[] =
             ranked.ranking(leagueUpcoming, (lug: FC.LeagueUpcomingGame) => lug.maximumReleaseDate, { reverse: true });
