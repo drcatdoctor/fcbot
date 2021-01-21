@@ -55,7 +55,7 @@ export function cleanactualdate(futureDate: Date) {
         return dateFormat(futureDate, "mmmm dS");
     }
     else if (time_remaining_ms < WEEK_IN_MS) {
-        return dateFormat(futureDate, "DDDD, mmmm dS");
+        return dateFormat(futureDate, "DDD, mmmm dS");
     }
     else {
         return dateFormat(futureDate, "mmmm dS");
