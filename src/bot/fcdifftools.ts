@@ -1,4 +1,4 @@
-import { LocalDateTime, ZonedDateTime, ZoneId, ChronoUnit, DateTimeFormatter } from '@js-joda/core'
+import { LocalDateTime, ZonedDateTime, ZoneId, ChronoUnit, DateTimeFormatter, Period } from '@js-joda/core'
 import '@js-joda/timezone'
 import { Locale } from '@js-joda/locale_en-us'
 import * as deepdiff from 'deep-diff';
@@ -11,6 +11,7 @@ const ordinal = require('ordinal');
 const FANTASY_CRITIC_TZ = ZoneId.of("America/New_York");
 const NO_DOW_FORMAT = DateTimeFormatter.ofPattern("MMMM d").withLocale(Locale.US);
 const DOW_FORMAT = DateTimeFormatter.ofPattern("EEEE, MMMM d").withLocale(Locale.US);
+const YEAR_FORMAT = DateTimeFormatter.ofPattern("MMMM d, YYYY").withLocale(Locale.US);
 
 const NUMERICAL_DIFF_REPORT_THRESHOLD = 2.0;
 
@@ -47,22 +48,31 @@ const DATEONLY_REGEXP = new RegExp(/\d\d\d\d\-\d\d\-\d\d/);
 
 export function cleanactualdate(futureDate: ZonedDateTime) {
     const now = ZonedDateTime.now();
-    const days_away = now.until(futureDate, ChronoUnit.DAYS);
+    const now_trunc = now.toLocalDate();
+    const truncated = futureDate.toLocalDate();
+    const period = Period.between(now_trunc, truncated);
 
-    switch (days_away) {
+    if (period.years() != 0) {
+        return truncated.format(YEAR_FORMAT);
+    }
+    if (period.months() != 0) {
+        return truncated.format(NO_DOW_FORMAT);
+    }
+
+    switch (period.days()) {
         case -1:
-            return "Yesterday, " + futureDate.format(NO_DOW_FORMAT);
+            return "Yesterday, " + truncated.format(NO_DOW_FORMAT);
         case 0:
-            return "Today, " + futureDate.format(NO_DOW_FORMAT);
+            return "Today, " + truncated.format(NO_DOW_FORMAT);
         case 1:
-            return "Tomorrow, " + futureDate.format(NO_DOW_FORMAT);        
+            return "Tomorrow, " + truncated.format(NO_DOW_FORMAT);        
     }
     
-    if (days_away >= 2 && days_away <= 7) {
-        return futureDate.format(DOW_FORMAT);
+    if (period.days() >= 2 && period.days() <= 7) {
+        return truncated.format(DOW_FORMAT);
     }
     else {
-        return futureDate.format(NO_DOW_FORMAT);
+        return truncated.format(NO_DOW_FORMAT);
     }
 }
 
