@@ -325,6 +325,15 @@ export class GuildWorker {
     private firstSentenceRegexp = new RegExp(/^(?:[A-Z ]+\n)*\n*([^\.\!]+[\.\!])[\s$]/, "m");
 
     private async infoForOne(game: FC.MasterGameYear): Promise<string | Discord.MessageEmbed> {
+
+        // we know league has been set or we wouldn't be able to get a MGY and we wouldn't have a game.
+
+        // so:
+        var leagueYear = this.lastLeagueYear;
+        if (!leagueYear) {
+            leagueYear = await this.getLeagueYear();
+        }
+
         var embed = new Discord.MessageEmbed();
 
         if (game.openCriticID) {
@@ -406,6 +415,16 @@ export class GuildWorker {
                 embed.addField("Average Draft Position", FCDiff.cleannum(game.averageDraftPosition), true);
             }
         } 
+
+        const publisher = leagueYear.publishers.filter(pub => pub.games.some(pubGame => pubGame.counterPick == false && pubGame.masterGame.masterGameID == game.masterGameID)).find(() => true);
+        const counterPublisher = leagueYear.publishers.filter(pub => pub.games.some(pubGame => pubGame.counterPick == true && pubGame.masterGame.masterGameID == game.masterGameID)).find(() => true);
+
+        if (publisher) {
+            embed.addField("Picked by", `${publisher.publisherName} (${publisher.playerName})`)
+        }
+        if (counterPublisher) {
+            embed.addField("Counterpicked by", `${counterPublisher.publisherName} (${counterPublisher.playerName})`)
+        }
 
         return embed;
     }
