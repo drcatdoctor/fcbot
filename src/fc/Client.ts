@@ -59,7 +59,9 @@ export class Client extends EventEmitter {
             url: Client.BASE_API_URL + Client.PATH_POST_REFRESH,
             body: params,
             simple: true
-        }, request_options));
+        }, request_options)).catch(function (err) {
+            throw err.response.body;
+        });
         this.auth = jsonbody;
         this.emit('authRefresh', jsonbody);
     }
