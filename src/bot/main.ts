@@ -233,6 +233,7 @@ export class FCBot {
             break;
 
         case "!fcup":
+        case "!fcupcoming":
             try {
                 await worker.doUpcoming(channel);
             }

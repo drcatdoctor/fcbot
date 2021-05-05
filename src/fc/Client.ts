@@ -60,7 +60,10 @@ export class Client extends EventEmitter {
             body: params,
             simple: true
         }, request_options)).catch(function (err) {
-            throw err.response.body;
+            console.log(err);
+            console.log(err.response);
+            console.log(err.response.body);
+            throw err;
         });
         this.auth = jsonbody;
         this.emit('authRefresh', jsonbody);

@@ -242,7 +242,7 @@ export class GuildWorker {
         const rankedUpcoming: { rank: number, item: FC.LeagueUpcomingGame }[] =
             ranked.ranking(leagueUpcoming, (lug: FC.LeagueUpcomingGame) => lug.maximumReleaseDate, { reverse: true });
         const strings = rankedUpcoming.map(ranking =>
-            `**${ranking.item.gameName}** (${ranking.item.publisherName}) - ${FCDiff.cleandate(ranking.item.estimatedReleaseDate)}`
+            `${FCDiff.cleandate(ranking.item.estimatedReleaseDate)} - ${ranking.item.publisherName}: **${ranking.item.gameName}**`
         );
 
         const embed = new Discord.MessageEmbed();
