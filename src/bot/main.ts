@@ -228,6 +228,7 @@ export class FCBot {
                 await worker.doScoreReport(channel);
             }
             catch (err) {
+                console.trace(err);
                 this.send(channel, "Error: " + err.message);
             }
             break;
@@ -238,6 +239,7 @@ export class FCBot {
                 await worker.doUpcoming(channel);
             }
             catch (err) {
+                console.trace(err);
                 this.send(channel, "Error: " + err.message);
             }
             break;
@@ -251,6 +253,7 @@ export class FCBot {
                 await worker.doPublisherReport(channel, args.join(" "));
             }
             catch (err) {
+                console.trace(err);
                 this.send(channel, "Error: " + err.message);
             }
             break;
@@ -269,6 +272,7 @@ export class FCBot {
                 await worker.checkOne(channel, args.join(" "));
             }
             catch (err) {
+                console.trace(err);
                 this.send(channel, "Error: " + err.message);
             }
             break;

@@ -649,6 +649,7 @@ export class GuildWorker {
             this.recordInMemcache();
         }
         catch (err) {
+            console.trace(err);
             console.log("ERROR: ", err);
         }
         finally {
