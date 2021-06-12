@@ -418,14 +418,16 @@ export class GuildWorker {
             }
         }
 
-        const publisher = leagueYear.publishers.filter(pub => pub.games.some(pubGame => pubGame.counterPick == false && pubGame.masterGame.masterGameID == game.masterGameID)).find(() => true);
-        const counterPublisher = leagueYear.publishers.filter(pub => pub.games.some(pubGame => pubGame.counterPick == true && pubGame.masterGame.masterGameID == game.masterGameID)).find(() => true);
-
-        if (publisher) {
-            embed.addField("Picked by", `${publisher.publisherName} (${publisher.playerName})`)
-        }
-        if (counterPublisher) {
-            embed.addField("Counterpicked by", `${counterPublisher.publisherName} (${counterPublisher.playerName})`)
+        if (leagueYear && leagueYear.publishers) {
+            const publisher = leagueYear.publishers.filter(pub => pub.games.some(pubGame => pubGame.counterPick == false && pubGame.masterGame.masterGameID == game.masterGameID)).find(() => true);
+            const counterPublisher = leagueYear.publishers.filter(pub => pub.games.some(pubGame => pubGame.counterPick == true && pubGame.masterGame.masterGameID == game.masterGameID)).find(() => true);
+    
+            if (publisher) {
+                embed.addField("Picked by", `${publisher.publisherName} (${publisher.playerName})`)
+            }
+            if (counterPublisher) {
+                embed.addField("Counterpicked by", `${counterPublisher.publisherName} (${counterPublisher.playerName})`)
+            }
         }
 
         return embed;
