@@ -152,7 +152,7 @@ export class GuildWorker {
         "DraftFinal": "League in Play (Draft Complete)",
         "NotStartedDraft": "League is in pre-draft signup mode"
     };
-    
+
     async doScoreReport(channel: Discord.TextChannel) {
         if (!this.league) {
             throw new Error("Can't do score without league set. (Check !fcadminhelp for commands.)");
@@ -167,7 +167,7 @@ export class GuildWorker {
             ranked.ranking(leagueYear.players, (pl: FC.Player) => pl.totalFantasyPoints);
 
         var strings: string[] = [];
-        
+
         if (leagueYear.playStatus.playStatus != "DraftFinal") {
             strings.push(
                 "*Note: " + leagueStatus + "*"
@@ -210,7 +210,7 @@ export class GuildWorker {
 
             embed.setFooter(
                 `Next expected ${releaseWord}: ${gameDescs}, ${FCDiff.cleandate(firstUpcoming[0].item.estimatedReleaseDate)}`
-            );       
+            );
         }
 
         channel.send(embed);
@@ -260,8 +260,10 @@ export class GuildWorker {
         }
 
         const leagueYear = await this.getLeagueYear();
-        const player = _.find(leagueYear.players, (pl: FC.Player) => 
-            pl.publisher != null && pl.publisher.publisherName.toLowerCase().includes(searchString.toLowerCase())
+        const player = _.find(leagueYear.players, (pl: FC.Player) =>
+            pl.publisher != null
+            && (pl.publisher.publisherName.toLowerCase().includes(searchString.toLowerCase())
+                || pl.publisher.playerName.toLowerCase().includes(searchString.toLowerCase()))
         );
 
         if (!player) {
@@ -283,7 +285,7 @@ export class GuildWorker {
             );
         }
 
-        strings = strings.concat( pub.games.map(game => {
+        strings = strings.concat(pub.games.map(game => {
             var name = game.gameName;
             var points = "";
             var score = "";
@@ -309,9 +311,9 @@ export class GuildWorker {
                 }
             }
             else {
-                return `${name}` + score + points; 
+                return `${name}` + score + points;
             }
-        }) );
+        }));
 
         strings = strings.filter(s => s != undefined && s != null && s.length > 0);
         strings.push(`Total points: **${FCDiff.cleannum(pub.totalFantasyPoints)}**`);
@@ -341,14 +343,14 @@ export class GuildWorker {
 
             embed.setTitle(ocGame.name);
             embed.setURL('https://opencritic.com/game/' + game.openCriticID.toString() + '/view');
-    
+
             var companyGroups = [
                 ocGame.Companies.filter(c => c.type == "DEVELOPER").map(c => c.name).join(", "),
                 ocGame.Companies.filter(c => c.type == "PUBLISHER").map(c => c.name).join(", ")
             ];
             companyGroups = companyGroups.filter(group => group.length > 0);
-            const genrecompanies = 
-                `(${ocGame.Genres.map(g => g.name).join(", ")}. ${companyGroups.join("; ")}.)`;        
+            const genrecompanies =
+                `(${ocGame.Genres.map(g => g.name).join(", ")}. ${companyGroups.join("; ")}.)`;
 
             const tagString = game.tags.join(" / ");
 
@@ -381,7 +383,7 @@ export class GuildWorker {
                 embed.setThumbnail("https:" + ocGame.mastheadScreenshot.thumbnail);
             }
             console.log("  Thumbnail: " + embed.thumbnail);
-     
+
             if (ocGame.numTopCriticReviews < 3) {
                 embed.addField("Critic Score", "N/A", true);
             } else {
@@ -392,7 +394,7 @@ export class GuildWorker {
             if (ocGame.reviewSummary.completed) {
                 embed.setFooter("\"" + ocGame.reviewSummary.summary + "\"");
             }
-        } 
+        }
         else {
             embed.setTitle(game.gameName);
             const tagString = game.tags.join(" / ");
@@ -414,7 +416,7 @@ export class GuildWorker {
             if (game.averageDraftPosition != undefined && game.averageDraftPosition != null) {
                 embed.addField("Average Draft Position", FCDiff.cleannum(game.averageDraftPosition), true);
             }
-        } 
+        }
 
         const publisher = leagueYear.publishers.filter(pub => pub.games.some(pubGame => pubGame.counterPick == false && pubGame.masterGame.masterGameID == game.masterGameID)).find(() => true);
         const counterPublisher = leagueYear.publishers.filter(pub => pub.games.some(pubGame => pubGame.counterPick == true && pubGame.masterGame.masterGameID == game.masterGameID)).find(() => true);
@@ -639,7 +641,7 @@ export class GuildWorker {
                 var newLeagueYear = await this.getLeagueYear();
                 var updateLength = updates.push(... this.updatesForLeagueYear(newLeagueYear));
                 console.log("Currently have", updateLength, "updates");
-    
+
                 var newLeagueActions = await this.getLeagueActions();
                 updateLength = updates.push(... this.updatesForLeagueActions(newLeagueActions));
                 console.log("Currently have", updateLength, "updates");
