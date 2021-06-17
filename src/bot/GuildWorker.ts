@@ -15,6 +15,7 @@ import { FCMongo } from './FCMongo'
 import { FCBot } from "./main";
 import { stringify } from "querystring";
 import { group } from "console";
+import { MemLocker } from "./MemLocker";
 
 export interface WorkerSaveState {
     guildId: string,
@@ -30,6 +31,7 @@ export class GuildWorker {
     private fc: FC.Client;
     private ocClient: OpenCritic.OCClient;
     private mongo: FCMongo;
+    private memlocker: MemLocker;
     running: boolean = false;
 
     private channels: Discord.TextChannel[] = [];
@@ -42,10 +44,11 @@ export class GuildWorker {
     private lastMasterGameYear: _.Dictionary<FC.MasterGameYear> = undefined;
     private updateCache = new NodeCache({ stdTTL: Number(process.env.DEDUPE_WINDOW_SECS) });
 
-    constructor(guild: Discord.Guild, memcache: FCMemcache, mongo: FCMongo) {
+    constructor(guild: Discord.Guild, memcache: FCMemcache, mongo: FCMongo, memlocker: MemLocker) {
         this.guild = guild;
         this.memcache = memcache;
         this.mongo = mongo;
+        this.memlocker = memlocker;
         this.fc = new FC.Client();
         this.ocClient = new OpenCritic.OCClient();
         console.log("constructing GuildWorker doing loadState");
@@ -582,11 +585,13 @@ export class GuildWorker {
 
     private async getLeagueYear(): Promise<FC.LeagueYear> {
         const memKey = FCMemcache.leagueYearKey(this.league);
+        const release = await this.memlocker.acquire(memKey);
         var newLeagueYear: FC.LeagueYear = await this.memcache.getLive(memKey);
         if (!newLeagueYear) {
             newLeagueYear = await this.fc.getLeagueYear(this.league);
             this.memcache.setLive(memKey, newLeagueYear);
         }
+        release();
         return newLeagueYear;
     }
 
@@ -596,21 +601,25 @@ export class GuildWorker {
 
     private async getLeagueActions(): Promise<FC.LeagueAction[]> {
         const memKey = FCMemcache.leagueActionsKey(this.league);
+        const release = await this.memlocker.acquire(memKey);
         var newLeagueActions: FC.LeagueAction[] = await this.memcache.getLive(memKey);
         if (!newLeagueActions) {
             newLeagueActions = await this.fc.getLeagueActions(this.league);
             this.memcache.setLive(memKey, newLeagueActions);
         }
+        release();
         return newLeagueActions;
     }
 
     private async getMGY(): Promise<_.Dictionary<FC.MasterGameYear>> {
         const memKey = FCMemcache.masterGameYearKey(this.league.year);
+        const release = await this.memlocker.acquire(memKey);
         var newMGYRaw: FC.MasterGameYear[] = await this.memcache.getLive(memKey);
         if (!newMGYRaw) {
             newMGYRaw = await this.fc.getMasterGameYear(this.league.year);
             this.memcache.setLive(memKey, newMGYRaw);
         }
+        release();
         return _.keyBy(newMGYRaw, game => game.masterGameID);
     }
 
