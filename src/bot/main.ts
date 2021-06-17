@@ -3,6 +3,7 @@ import * as Discord from 'discord.js';
 import { FCMemcache } from './FCMemcache'
 import { GuildWorker } from './GuildWorker'
 import { FCMongo } from './FCMongo';
+import { MemLocker } from "./MemLocker";
 
 require('dotenv').config()
 
@@ -14,10 +15,12 @@ export class FCBot {
     memcache: FCMemcache;
     mongo: FCMongo;
     workers: _.Dictionary<GuildWorker> = {};
+    memlocker: MemLocker;
 
     constructor() {
         this.memcache = new FCMemcache();
         this.mongo = new FCMongo();
+        this.memlocker = new MemLocker();
 
         this.discord = new Discord.Client();
 
@@ -310,7 +313,7 @@ export class FCBot {
     }
 
     initializeGuild(guild: Discord.Guild) {
-        const worker = new GuildWorker(guild, this.memcache, this.mongo);
+        const worker = new GuildWorker(guild, this.memcache, this.mongo, this.memlocker);
         console.log(`New worker created for "${guild.name}" (${guild.id})`)
         this.workers[guild.id] = worker;
     }

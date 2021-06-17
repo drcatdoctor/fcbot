@@ -19,7 +19,7 @@
     "@js-joda/timezone": "^2.5.0",
     "@types/lodash": "^4.14.165",
     "@types/node": "^13.13.36",
-    "async-mutex": "^0.1.4",
+    "async-mutex": "^0.3.1",
     "deep-diff": "^1.0.2",
     "discord.js": "^12.5.1",
     "dotenv": "^8.2.0",
