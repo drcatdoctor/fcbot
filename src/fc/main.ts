@@ -1,3 +1,4 @@
+import { Dictionary } from 'lodash'
 import { Client } from './Client'
 
 export { Client }
@@ -71,6 +72,7 @@ export interface Publisher {
     publisherName: string,
     playerName: string,
     games: PublisherGame[],
+    gamesDictionary: Dictionary<PublisherGame> | null,   // our addition
     totalFantasyPoints: number,
     budget: number,
     draftPosition: number,
