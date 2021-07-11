@@ -28,6 +28,7 @@ const FILTER_OUT_KEYS = [
     'eligiblePercentCounterPick',
     'averageDraftPosition',
     'totalProjectedPoints',
+    'adjustedPercentCounterPick'
 ];
 
 function filterAnythingButPublishers(path: string[], key: string): boolean {
@@ -222,12 +223,12 @@ function updateForGame(oldgame: FC.Game, newgame: FC.Game, key: string, d: any):
 }
 
 function diffPublisherGames(oldpub: FC.Publisher, newpub: FC.Publisher, d: any): string[] {
-    // d.path = publishers, N, games, ...?
+    // d.path = publishers, <#>, gamesDictionary, <a PublisherGameID>, ...?
     let updates: string[] = [];
     if (d.kind == 'E') {
-        const gameindex = d.path[3];
-        const oldgame = oldpub.games[gameindex];
-        const newgame = newpub.games[gameindex];
+        const publisherGameID = d.path[3];
+        const oldgame = oldpub.gamesDictionary[publisherGameID];
+        const newgame = newpub.gamesDictionary[publisherGameID];
         const update = updateForGame(oldgame, newgame, d.path[4], d);
         if (update)
             updates.push(update);
@@ -262,7 +263,18 @@ function getRank<T>(ranks: Ranking<T>[], item: T): RankResult {
     };
 }
 
+function addGamesDictionary(ly: FC.LeagueYear): FC.LeagueYear {
+    ly.publishers.forEach(function (pub: FC.Publisher) {
+        pub.gamesDictionary = _.keyBy(pub.games, 'publisherGameID');
+    });
+    return ly;
+}
+
 export function diffLeagueYear(oldData: FC.LeagueYear, newData: FC.LeagueYear): string[] {
+
+    oldData = addGamesDictionary(oldData);
+    newData = addGamesDictionary(newData);
+
     const difflist = deepdiff.diff(oldData, newData,
         (p, k) => filterAnythingButPublishers(p, k) || filterOutUninterestingKeys(p, k)
     );
@@ -278,12 +290,16 @@ export function diffLeagueYear(oldData: FC.LeagueYear, newData: FC.LeagueYear): 
     const oldRanks = makeRanks(oldPublishers, 'totalFantasyPoints');
 
     difflist.forEach(function (d: any) {
+        if (d.path[2] == 'games') {
+            // always ignore this because we only care about gamesDictionary
+            return;
+        }
         console.log(d);
         if (d.path[0] == "publishers" && d.path.length > 2 && sameLength) {
             const pubindex = d.path[1];
             const newpub = newPublishers[pubindex];
             const oldpub = oldPublishers[pubindex];
-            if (d.path[2] == 'games') {
+            if (d.path[2] == 'gamesDictionary') {
                 updates = _.union(updates, diffPublisherGames(oldpub, newpub, d));
             }
             else if (d.path[2] == 'totalFantasyPoints') {
