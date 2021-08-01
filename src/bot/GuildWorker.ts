@@ -189,7 +189,7 @@ export class GuildWorker {
             }
             else {
                 return `**${rank}. ${pl.publisher.publisherName}** (${playerNameString}) - ` +
-                    `**${Math.round(pl.totalFantasyPoints * 100) / 100} points** (${pl.publisher.gamesReleased}/${pl.publisher.gamesWillRelease + pl.publisher.gamesReleased} out)`;
+                    `**${Math.round(pl.totalFantasyPoints * 100) / 100} points** - ${pl.publisher.gamesReleased}/${pl.publisher.gamesWillRelease + pl.publisher.gamesReleased} out`;
             }
         }));
         const embed = new Discord.MessageEmbed();
