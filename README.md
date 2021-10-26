@@ -20,6 +20,7 @@ See below on how to use it.
   - [For everyone](#for-everyone)
   - [Admin-only](#admin-only)
 - [FAQ](#faq)
+- [Hosting your own fcbot](#hosting-your-own-fcbot)
 
 ## Using fcbot
 
@@ -112,3 +113,21 @@ will try to find some time to add that back in as an option. Currently it seems 
 ### It's broken aahhh
 
 I'm on discord as DrCat#2160, send me a PM and I will try to help.
+
+## Hosting your own fcbot
+
+FCBot is designed to be hosted on Heroku.
+
+You'll need to configure an app with an add-on and a... former add-on.
+
+The add-on is Memcached Cloud, which, surprise, does caching. By adding it to your app it'll automatically set environment variables that fcbot will pick up. 
+
+The other one: At one point, Heroku had a MongoDB add-on, but that seems to have changed, so you will also need an account at mongodb.com for a free MongoDB server. I haven't done this from scratch myself, but just go with the defaults and eventually you will be able to get to a connection string that looks like `mongodb+srv://username:password@cluster-prod.mocnf.mongodb.net/someDatabaseName?retryWrites=true&w=majority`. That's what you need.
+
+Edit your app's config vars and set `MONGODB_URI` to the connection string you have.
+
+Then set `BOT_TOKEN` to the Discord bot token you get from setting up a new bot in Discord. It looks like a bunch of letters with a couple of periods thrown in the middle.
+
+Add your bot to your Discord server(s).
+
+Once you have all that set up, following Heroku's directions, set up a local git repository (a fork of this one, I'd suggest) and then deploy the Heroku app via git push or button-press or whatever you like. The rest should be automatic.
