@@ -116,18 +116,28 @@ I'm on discord as DrCat#2160, send me a PM and I will try to help.
 
 ## Hosting your own fcbot
 
-FCBot is designed to be hosted on Heroku.
+First, you should set up a new bot in the Discord Developer Portal. The permissions you'll need for the bot are "Send Messages" and "Use Application Commands". Grab the bot token for later.
+
+FCBot is designed to be hosted on Heroku. I recommend forking this git repository to start, as you'll be able to set up the automatic deploy during the Heroku setup by pointing to the forked repo.
+
+Set up a new Heroku app. After you name the app, initial setup will show options for how to deploy. Here you can choose to Connect to GitHub. Here you can connect to your GitHub account and point it at the forked FCBot repository mentioned above. This will make deployment easy, if you choose.
 
 You'll need to configure an app with an add-on and a... former add-on.
 
 The add-on is Memcached Cloud, which, surprise, does caching. By adding it to your app it'll automatically set environment variables that fcbot will pick up. 
 
-The other one: At one point, Heroku had a MongoDB add-on, but that seems to have changed, so you will also need an account at mongodb.com for a free MongoDB server. I haven't done this from scratch myself, but just go with the defaults and eventually you will be able to get to a connection string that looks like `mongodb+srv://username:password@cluster-prod.mocnf.mongodb.net/someDatabaseName?retryWrites=true&w=majority`. That's what you need.
+The other one: At one point, Heroku had a MongoDB add-on, but that seems to have changed, so you will also need an account at mongodb.com for a free MongoDB server. You'll have to set up:
+* A database (Databases on the left menu)
+* A collection within that database (under Databases, click Browse Collections)
+* A database user (under Database Access, create a user and make sure it can access your database and its collections)
+That's all pretty quick to get going. Once that's done, go to Databases and click Connect. Choose "Connect Your Application" and you'll see the connection string that looks like `mongodb+srv://username:password@cluster-prod.mocnf.mongodb.net/someDatabaseName?retryWrites=true&w=majority`. That's what you need. Fill in the username, user password, and database name that you created.
 
 Edit your app's config vars and set `MONGODB_URI` to the connection string you have.
 
 Then set `BOT_TOKEN` to the Discord bot token you get from setting up a new bot in Discord. It looks like a bunch of letters with a couple of periods thrown in the middle.
 
-Add your bot to your Discord server(s).
+Finally, in your Heroku app, go to the Overview tab. You'll need to Configure your Dynos correctly. Make sure the web Dyno is off and the worker Dyno is on. See here:
 
-Once you have all that set up, following Heroku's directions, set up a local git repository (a fork of this one, I'd suggest) and then deploy the Heroku app via git push or button-press or whatever you like. The rest should be automatic.
+![image](https://user-images.githubusercontent.com/4060573/138987954-7e5aa364-1683-4bcc-98b6-7e7978ebbc74.png)
+
+Add your bot to your Discord server(s). The rest should be automatic.
