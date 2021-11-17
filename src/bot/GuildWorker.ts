@@ -197,7 +197,7 @@ export class GuildWorker {
 
         const user1 = leagueYear.players[0].user;
         embed.setTitle(user1.leagueName);
-        embed.setURL(FC.Client.leagueUrl(this.league.id, this.league.year));
+        embed.setURL(this.fc.leagueUrl(this.league.id, this.league.year));
         embed.setColor("ffcc00");
 
         if (leagueUpcoming.length > 0) {

@@ -2,7 +2,6 @@ import _ = require("lodash");
 import rp = require('request-promise');
 import { EventEmitter } from "events";
 import { League, LeagueYear, LeagueAction, MasterGameYear, LeagueUpcomingGame } from "./main";
-import { stringify } from "querystring";
 
 const request_options = {
     headers: {
@@ -13,9 +12,10 @@ const request_options = {
 };
 
 export class Client extends EventEmitter {
-    static readonly SITE_URL = "https://www.fantasycritic.games";
+    private static readonly PRODUCTION_SITE_URL = "https://www.fantasycritic.games";
+    private readonly SITE_URL: String;
+    private readonly BASE_API_URL: String;     // SITE_URL + "/api";
 
-    private static readonly BASE_API_URL = Client.SITE_URL + "/api";
     private static readonly PATH_GET_LEAGUE_YEAR = '/League/GetLeagueYear';
     private static readonly PATH_GET_LEAGUE_UPCOMING = '/League/LeagueUpcomingGames';
     private static readonly PATH_GET_LEAGUE_ACTIONS = '/League/GetLeagueActions';
@@ -28,8 +28,20 @@ export class Client extends EventEmitter {
         refreshToken: string;
     };
 
-    static leagueUrl(leagueID: string, year: number) {
-        return Client.SITE_URL + "/league/" + leagueID + "/" + year.toString();
+    constructor() {
+        super();
+
+        if (process.env.OVERRIDE_FC_SITE_URL) {
+            this.SITE_URL = process.env.OVERRIDE_FC_SITE_URL;
+        }
+        else {
+            this.SITE_URL = Client.PRODUCTION_SITE_URL;
+        }
+        this.BASE_API_URL = this.SITE_URL + "/api";
+    }
+
+    leagueUrl(leagueID: string, year: number) {
+        return this.SITE_URL + "/league/" + leagueID + "/" + year.toString();
     }
 
     async login(emailAddress: string, password: string) {
@@ -39,7 +51,7 @@ export class Client extends EventEmitter {
         };
         console.log("Logging in to FC");
         const jsonbody = await rp.post(_.defaults({
-            url: Client.BASE_API_URL + Client.PATH_POST_LOGIN,
+            url: this.BASE_API_URL + Client.PATH_POST_LOGIN,
             body: params,
             simple: true
         }, request_options));
@@ -56,7 +68,7 @@ export class Client extends EventEmitter {
             refreshToken: this.auth.refreshToken
         };
         const jsonbody = await rp.post(_.defaults({
-            url: Client.BASE_API_URL + Client.PATH_POST_REFRESH,
+            url: this.BASE_API_URL + Client.PATH_POST_REFRESH,
             body: params,
             simple: true
         }, request_options)).catch(function (err) {
@@ -72,7 +84,7 @@ export class Client extends EventEmitter {
         var self = this; // needed for functions because typescript is insane
         if (this.auth) {
             const getPromise = rp.get(_.defaults({
-                url: Client.BASE_API_URL + path,
+                url: this.BASE_API_URL + path,
                 qs: queryStringParams,
                 simple: false,
                 resolveWithFullResponse: true,
@@ -96,7 +108,7 @@ export class Client extends EventEmitter {
         else {
             // try it?
             const getPromise = rp.get(_.defaults({
-                url: Client.BASE_API_URL + path,
+                url: this.BASE_API_URL + path,
                 qs: queryStringParams,
                 simple: false,
                 resolveWithFullResponse: true,
