@@ -1,1 +1,3 @@
-// import express from 'express';
+import { FCApp } from '../web/main';
+
+new FCApp();

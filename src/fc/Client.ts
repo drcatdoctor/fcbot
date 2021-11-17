@@ -13,8 +13,8 @@ const request_options = {
 
 export class Client extends EventEmitter {
     private static readonly PRODUCTION_SITE_URL = "https://www.fantasycritic.games";
-    private readonly SITE_URL: String;
-    private readonly BASE_API_URL: String;     // SITE_URL + "/api";
+    readonly SITE_URL: string;
+    private readonly BASE_API_URL: string;     // SITE_URL + "/api";
 
     private static readonly PATH_GET_LEAGUE_YEAR = '/League/GetLeagueYear';
     private static readonly PATH_GET_LEAGUE_UPCOMING = '/League/LeagueUpcomingGames';
