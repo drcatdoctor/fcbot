@@ -1,18 +1,19 @@
+// leave constants at the top, because it reads environment vars from dotenv
+import { FCConstants } from '../common/FCConstants';
+
 import express = require ('express');
 import path = require ('path');
 import { Client as OICClient, Issuer } from 'openid-client';
-import request = require('request');
+import rp = require('request-promise');
 import { Client as FCClient } from '../fc/Client';
-
 export class FCApp {
 
-    discordIssuer: Issuer<OICClient>;
-    fcIssuer: Issuer<OICClient>;
+    discordAuthClient: OICClient;
+    fcAuthClient: OICClient;
     app: express.Express;
     fc: FCClient;
 
     constructor() {
-        
         this.app = express();
         this.fc = new FCClient();
                 
@@ -32,20 +33,49 @@ export class FCApp {
         this.app.get('/', (req, res) => res.render('pages/index'))
         this.app.get('/auth/discord', this.handleDiscordAuthCallback.bind(this));
 
-        this.discordIssuer = new Issuer({
+        const discordIssuer = new Issuer({
             issuer: 'Discord',
             authorization_endpoint: 'https://discord.com/api/oauth2/authorize',
             token_endpoint: 'https://discord.com/api/oauth2/token',
             revocation_endpoint: 'https://discord.com/api/oauth2/token/revoke'
         });
 
-        this.fcIssuer = await Issuer.discover(this.fc.SITE_URL);
+        var fcIssuer: Issuer<OICClient>;
+        try {
+            fcIssuer = await Issuer.discover(this.fc.SITE_URL);
+        }
+        catch (e) {
+            // don't do anything for now -- beta
+            console.error(e);
+        }
+
+        // setup imports for inside templates
+        this.app.locals.FCConstants = FCConstants;
+
+        // make oauth clients
+        this.discordAuthClient = new discordIssuer.Client({
+            client_id: process.env.DISCORD_CLIENT_ID,
+            client_secret: process.env.DISCORD_CLIENT_SECRET
+        });
+        if (fcIssuer) {
+            this.fcAuthClient = new fcIssuer.Client({
+                client_id: process.env.FC_CLIENT_ID,
+                client_secret: process.env.FC_CLIENT_SECRET
+            });
+        }
     }
 
     handleDiscordAuthCallback(req: express.Request, res: express.Response) {
-        var code = req.query['code'];
-        var guild_id = req.query['guild_id'];
+        const code = req.query['code'];
+        const guild_id = req.query['guild_id'];
 
+        const promiseOfTokenSet = this.discordAuthClient.grant({
+            grant_type: 'authorization_code',
+            code: code,
+            redirect_uri: FCConstants.MY_RECEIVE_CODE_FROM_DISCORD_URI
+        });
 
+        res.send(`OK. (got ${code}, ${guild_id}).`);
+        res.end();
     }
 }

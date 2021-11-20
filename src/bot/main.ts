@@ -1,3 +1,6 @@
+// leave constants at the top, because it reads environment vars from dotenv
+import { FCConstants } from '../common/FCConstants';
+
 import * as _ from "lodash";
 import * as Discord from 'discord.js';
 import { FCMemcache } from './FCMemcache'
@@ -5,11 +8,7 @@ import { GuildWorker } from './GuildWorker'
 import { FCMongo } from './FCMongo';
 import { MemLocker } from "./MemLocker";
 
-require('dotenv').config()
-
 export class FCBot {
-
-    public static readonly NEEDS_PERMISSIONS = 18432;
 
     discord: Discord.Client;
     memcache: FCMemcache;
@@ -22,7 +21,7 @@ export class FCBot {
         this.mongo = new FCMongo();
         this.memlocker = new MemLocker();
 
-        this.discord = new Discord.Client();
+        this.discord = new Discord.Client({intents: "GUILD_MESSAGES"});
 
         // attach events
         this.discord.on('message', this.handleMessage.bind(this));
@@ -48,7 +47,7 @@ export class FCBot {
     }
 
     async handleMessage(message: Discord.Message) {
-        if (message.channel.type != "text")
+        if (message.channel.type != "GUILD_TEXT")
             return;
         const channel: Discord.TextChannel = <Discord.TextChannel>message.channel;
         const guild = channel.guild;
@@ -61,9 +60,9 @@ export class FCBot {
         var isAdmin = false;
         if (originator) {
             // any of these perms counts as bot admin.
-            isAdmin = originator.hasPermission('ADMINISTRATOR')
-                      || originator.hasPermission('MANAGE_GUILD') 
-                      || originator.hasPermission('MANAGE_CHANNELS')
+            isAdmin = originator.permissions.has('ADMINISTRATOR')
+                      || originator.permissions.has('MANAGE_GUILD') 
+                      || originator.permissions.has('MANAGE_CHANNELS')
                       || originator.user.id == '229531028790706177';  // makes helping easier
         }
         else {
@@ -152,7 +151,7 @@ export class FCBot {
                 channelName = channelName.substring(1);
             }
             var foundChannel = <Discord.TextChannel>channel.guild.channels.cache.find(
-                c => c.name == channelName && c.type == "text"
+                c => c.name == channelName && c.type == "GUILD_TEXT"
             );
             if (!foundChannel) {
                 this.send(channel, `I couldn't find a channel matching "${channelName}".`);
@@ -170,7 +169,7 @@ export class FCBot {
             if (channelName[0] == "#") {
                 channelName = channelName.substring(1);
             }
-            var foundChannel = <Discord.TextChannel>channel.guild.channels.cache.find(c => c.name == channelName && c.type == "text");
+            var foundChannel = <Discord.TextChannel>channel.guild.channels.cache.find(c => c.name == channelName && c.type == "GUILD_TEXT");
             if (!foundChannel) {
                 this.send(channel, `I couldn't find a channel matching "${channelName}".`);
             } else {

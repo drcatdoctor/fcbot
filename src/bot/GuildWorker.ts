@@ -16,6 +16,7 @@ import { FCBot } from "./main";
 import { stringify } from "querystring";
 import { group } from "console";
 import { MemLocker } from "./MemLocker";
+import { FCConstants } from "../common/FCConstants";
 
 export interface WorkerSaveState {
     guildId: string,
@@ -90,7 +91,7 @@ export class GuildWorker {
             console.log(state);
             this.league = state.league;
             for (var name of state.channelNames) {
-                var found = <Discord.TextChannel>this.guild.channels.cache.find(c => c.name == name && c.type == "text");
+                var found = <Discord.TextChannel>this.guild.channels.cache.find(c => c.name == name && c.type == "GUILD_TEXT");
                 if (!found) {
                     console.log(`Loaded state had channel #${name} but it wasn't found in the guild.`);
                 } else {
@@ -198,7 +199,7 @@ export class GuildWorker {
         const user1 = leagueYear.players[0].user;
         embed.setTitle(user1.leagueName);
         embed.setURL(this.fc.leagueUrl(this.league.id, this.league.year));
-        embed.setColor("ffcc00");
+        embed.setColor("#ffcc00");
 
         if (leagueUpcoming.length > 0) {
             const filteredUpcoming = _.filter(leagueUpcoming, g => !g.masterGame.isReleased);
@@ -216,7 +217,7 @@ export class GuildWorker {
             );
         }
 
-        channel.send(embed);
+        channel.send({ embeds: [embed] });
     }
 
     private static joinWithAnd(arr: string[]) {
@@ -252,9 +253,9 @@ export class GuildWorker {
         embed.setDescription(strings.join('\n'));
 
         embed.setTitle("Upcoming Games");
-        embed.setColor("e8853a");
+        embed.setColor("#e8853a");
 
-        channel.send(embed);
+        channel.send({ embeds: [embed] });
     }
 
     async doPublisherReport(channel: Discord.TextChannel, searchString: string) {
@@ -322,9 +323,9 @@ export class GuildWorker {
         strings.push(`Total points: **${FCDiff.cleannum(pub.totalFantasyPoints)}**`);
 
         embed.setDescription(strings.join('\n'));
-        embed.setColor("aaccff");
+        embed.setColor("#aaccff");
         console.log(strings.join('\n'));
-        channel.send(embed);
+        channel.send({ embeds: [embed] });
     }
 
     private firstSentenceRegexp = new RegExp(/^(?:[A-Z ]+\n)*\n*([^\.\!]+[\.\!])[\s$]/, "m");
@@ -472,11 +473,16 @@ export class GuildWorker {
         FCBot.logSend(channel, result.toString());
 
         try {
-            channel.send(result);
+            if (result instanceof Discord.MessageEmbed) {
+                channel.send({ embeds: [result] });
+            }
+            else {
+                channel.send(result);
+            }
         } catch (e) {
             if (e.message.includes("Missing Permissions")) {
                 channel.send("Unable to embed result -- insufficient permissions.\n" +
-                    `Server admin should go to https://discord.com/api/oauth2/authorize?client_id=${process.env.CLIENT_ID}&permissions=${FCBot.NEEDS_PERMISSIONS}&scope=bot to reauthorize.`)
+                    `Server admin should go to ${FCConstants.ADD_BOT_URL} to reauthorize.`)
             } else {
                 throw e;
             }
