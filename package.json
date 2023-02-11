@@ -34,7 +34,7 @@
     "mongodb": "^3.6.3",
     "node-cache": "^5.1.2",
     "node-schedule": "^1.3.2",
-    "openid-client": "^4.9.1",
+    "openid-client": "^5.4.0",
     "ordinal": "^1.0.3",
     "ranked": "^0.4.0",
     "request-promise": "^4.2.6",
@@ -50,7 +50,7 @@
     "@types/node-schedule": "^1.3.1",
     "@types/request-promise": "^4.1.47",
     "longjohn": "^0.2.12",
-    "nodemon": "^2.0.6"
+    "nodemon": "^2.0.20"
   },
   "browserslist": {
     "production": [
